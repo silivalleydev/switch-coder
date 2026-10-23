@@ -19,6 +19,7 @@ export interface Settings {
   contextSize: number
   gpuLayers: number
   reasoningBudget: number   // tokens Flint may spend thinking; -1 unlimited, 0 off
+  vercelToken: string       // optional: personal token instead of browser login
   byokEnabled: boolean      // user's own cloud key; off by default (no cost to us)
   anthropicApiKey: string
   anthropicModel: string
@@ -102,3 +103,7 @@ export type ProcOutput = { id: string; chunk: string; url?: string; exited?: num
 
 export type TemplateId = 'vite-react' | 'next' | 'expo' | 'python' | 'empty'
 export interface Template { id: TemplateId; name: string; desc: { ko: string; en: string }; command?: string; dev?: string }
+
+// ---- deploy (Vercel)
+export type DbProvider = 'supabase' | 'neon'
+export interface VercelStatus { cliAvailable: boolean; loggedIn: boolean; user?: string; project?: { id: string; orgId: string; name?: string }; db: DbProvider | null; envKeys: string[] }

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { Eye, Code2, TerminalSquare, RefreshCw, ExternalLink, Square, Play } from 'lucide-react'
+import { Eye, Code2, TerminalSquare, RefreshCw, ExternalLink, Square, Play, Rocket } from 'lucide-react'
+import DeployPanel from './DeployPanel'
 import { useStore } from '../store'
 import { t } from '../lib/i18n'
 import FileTree from './FileTree'
@@ -38,7 +39,7 @@ function Terminal() {
 }
 
 export default function MainArea() {
-  const { view, setView, settings, previewUrl } = useStore()
+  const { view, setView, settings, previewUrl, liveUrl } = useStore()
   const lang = settings?.language ?? 'ko'
   return (
     <div className="mainarea">
@@ -46,11 +47,13 @@ export default function MainArea() {
         <button className={view === 'preview' ? 'on' : ''} onClick={() => setView('preview')}><Eye size={13} /> {t(lang, 'preview')}{previewUrl && <span className="led running" />}</button>
         <button className={view === 'code' ? 'on' : ''} onClick={() => setView('code')}><Code2 size={13} /> {t(lang, 'code')}</button>
         <button className={view === 'terminal' ? 'on' : ''} onClick={() => setView('terminal')}><TerminalSquare size={13} /> {t(lang, 'terminal')}</button>
+        <button className={view === 'deploy' ? 'on' : ''} onClick={() => setView('deploy')}><Rocket size={13} /> {lang === 'ko' ? '배포' : 'Deploy'}{liveUrl && <span className="led running" />}</button>
       </div>
       <div className="viewbody">
         {view === 'preview' && <Preview />}
         {view === 'code' && <div className="codeview"><FileTree /><EditorPane /></div>}
         {view === 'terminal' && <Terminal />}
+        {view === 'deploy' && <DeployPanel />}
       </div>
     </div>
   )

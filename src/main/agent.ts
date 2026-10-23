@@ -4,6 +4,8 @@ import { randomUUID } from 'crypto'
 import type { AgentEvent, ModelTarget } from '../shared/types'
 import { runCommand, startBackground, isDenied, listProcs } from './procs'
 import { readTree } from './fs'
+import { deploy as vercelDeploy } from './vercel'
+import { loadSettings } from './store'
 
 type Msg = { role: 'system' | 'user' | 'assistant' | 'tool'; content: string | null; tool_calls?: ToolCall[]; tool_call_id?: string; name?: string; reasoning_content?: string }
 type ToolCall = { id: string; type: 'function'; function: { name: string; arguments: string } }
@@ -13,6 +15,7 @@ const TOOLS = [
   { type: 'function', function: { name: 'read_file', description: 'Read a text file in the project.', parameters: { type: 'object', properties: { path: { type: 'string' } }, required: ['path'] } } },
   { type: 'function', function: { name: 'write_file', description: 'Create or overwrite a file with the full content. Creates parent folders.', parameters: { type: 'object', properties: { path: { type: 'string' }, content: { type: 'string' } }, required: ['path', 'content'] } } },
   { type: 'function', function: { name: 'run_command', description: 'Run a shell command in the project root and return its output. Use background=true for long-running servers (npm run dev); it returns the detected localhost URL.', parameters: { type: 'object', properties: { command: { type: 'string' }, background: { type: 'boolean' } }, required: ['command'] } } },
+  { type: 'function', function: { name: 'deploy', description: 'Deploy the project to Vercel (production) and return the live URL. Only call when the user asked to deploy/publish and the app runs locally without errors.', parameters: { type: 'object', properties: {} } } },
   { type: 'function', function: { name: 'finish', description: 'Call when the task is complete. Summarize what was built and how to run it.', parameters: { type: 'object', properties: { summary: { type: 'string' } }, required: ['summary'] } } },
 ]
 
@@ -24,6 +27,8 @@ Rules:
 - After writing code, actually run it (run_command). For dev servers use background=true and report the URL. Read errors and fix them; do not give up after one failure, but stop after 4 failed attempts on the same error and explain.
 - Never run destructive commands. Never leave the project folder.
 - Keep your visible messages short. Put thinking in reasoning, not in the message.
+- If .env.local exists, read it to learn which services are connected (SUPABASE_* → use @supabase/supabase-js; DATABASE_URL/POSTGRES_URL → use Prisma or Drizzle). Never print secret values back to the user.
+- Only call deploy when the user asked to deploy or publish, after the app runs locally.
 - When everything runs, call finish with a 2-5 line summary.`
 
 const running = new Map<string, AbortController>()
@@ -61,6 +66,11 @@ async function execTool(root: string, name: string, args: Record<string, unknown
         }
         const r = await runCommand(cmd, root, 180_000, emitLog)
         return { ok: r.code === 0, output: clip(`${r.output}\n[exit ${r.code}${r.timedOut ? ', timed out' : ''}]`) }
+      }
+      case 'deploy': {
+        emitLog('$ vercel deploy --prod\n')
+        const r = await vercelDeploy(root, true, loadSettings().vercelToken || undefined, emitLog)
+        return { ok: r.ok, output: r.ok ? `deployed: ${r.url ?? '(url not parsed)'}` : clip(`deploy failed:\n${r.output}`) }
       }
       case 'finish': return { ok: true, output: 'done', finished: String(args.summary ?? '') }
       default: return { ok: false, output: `unknown tool ${name}` }

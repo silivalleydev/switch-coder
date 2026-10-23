@@ -10,7 +10,7 @@ export type AgentItem =
   | { id: string; kind: 'tool'; callId: string; name: string; args: Record<string, unknown>; ok?: boolean; output?: string }
   | { id: string; kind: 'done'; text: string; iterations: number }
   | { id: string; kind: 'error'; text: string }
-export type View = 'preview' | 'code' | 'terminal'
+export type View = 'preview' | 'code' | 'terminal' | 'deploy'
 export interface Step { title: string; detail: string; files: string[]; status: 'todo' | 'running' | 'done' }
 
 export const langOf = (name: string) => {
@@ -35,6 +35,8 @@ interface State {
   view: View
   chatMode: 'build' | 'chat'
   previewUrl: string | null
+  liveUrl: string | null
+  setLiveUrl: (u: string | null) => void
   terminal: string
   agentItems: AgentItem[]
   agentRunning: boolean
@@ -72,7 +74,7 @@ let currentRequest: string | null = null
 
 export const useStore = create<State>((set, get) => ({
   settings: null, projectRoot: null, tree: null, tabs: [], active: null, messages: [], steps: [], llama: { state: 'stopped' }, ledger: [], modal: null, selection: null,
-  view: 'code', chatMode: 'build', previewUrl: null, terminal: '', agentItems: [], agentRunning: false, agentRunId: null, creating: false,
+  view: 'code', chatMode: 'build', previewUrl: null, liveUrl: null, setLiveUrl: (liveUrl) => set({ liveUrl }), terminal: '', agentItems: [], agentRunning: false, agentRunId: null, creating: false,
   recents: (() => { try { return JSON.parse(localStorage.getItem('recents') ?? '[]') as string[] } catch { return [] } })(),
   setView: (view) => set({ view }),
   setChatMode: (chatMode) => set({ chatMode }),
@@ -125,6 +127,7 @@ export const useStore = create<State>((set, get) => ({
         return { agentItems: items }
       })
       if (ev.type === 'tool_result' && ev.name === 'write_file') void get().refreshTree()
+      if (ev.type === 'tool_result' && ev.name === 'deploy') { const m = ev.output.match(/deployed: (http\S+)/); if (m) set({ liveUrl: m[1] }) }
       if (ev.type === 'tool_result' && ev.name === 'run_command') { const m = ev.output.match(/url: (http[^\s,]+)/); if (m) get().setPreviewUrl(m[1]) }
     })
     window.sc.proc.onOutput((o) => { set((st) => ({ terminal: (st.terminal + o.chunk).slice(-60000) })); if (o.url) get().setPreviewUrl(o.url) })
@@ -137,7 +140,7 @@ export const useStore = create<State>((set, get) => ({
     localStorage.setItem('lastFolder', root)
     const recents = [root, ...get().recents.filter((r) => r !== root)].slice(0, 8)
     localStorage.setItem('recents', JSON.stringify(recents))
-    set({ projectRoot: root, tabs: [], active: null, recents, agentItems: [], previewUrl: null, view: 'code' })
+    set({ projectRoot: root, tabs: [], active: null, recents, agentItems: [], previewUrl: null, liveUrl: null, view: 'code' })
     await get().refreshTree()
   },
   refreshTree: async () => { const root = get().projectRoot; if (root) set({ tree: await window.sc.fs.tree(root) }) },

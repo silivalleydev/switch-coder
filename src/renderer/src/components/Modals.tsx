@@ -58,6 +58,11 @@ export function SettingsModal() {
           </>)}
         </div>
         </>)}
+        <h3>Deploy (Vercel)</h3>
+        <div className="form">
+          <label>Vercel token</label><input type="password" value={s.vercelToken} onChange={(e) => u({ vercelToken: e.target.value })} placeholder="(선택) vercel.com/account/tokens" />
+          <div className="help">비워두면 "배포" 탭의 브라우저 로그인을 사용합니다. 토큰은 이 맥에만 저장.</div>
+        </div>
         <h3>General</h3>
         <div className="form"><label>Language</label><select value={s.language} onChange={(e) => u({ language: e.target.value as 'ko' | 'en' })}><option value="ko">한국어</option><option value="en">English</option></select></div>
         <div className="foot"><button onClick={() => setModal(null)}>Cancel</button><button className="primary" onClick={() => void save()}>Save</button></div>

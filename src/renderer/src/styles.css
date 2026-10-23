@@ -132,3 +132,10 @@ table.ledger { width: 100%; border-collapse: collapse; font-size: 12px; } table.
 .tool .head .name { color: var(--accent2); } .tool .head .arg { color: var(--fg2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
 .tool .head .st { width: 8px; height: 8px; border-radius: 50%; background: var(--warn); animation: pulse 1s infinite; } .tool .head .st.ok { background: var(--local); animation: none; } .tool .head .st.fail { background: var(--danger); animation: none; }
 .tool pre { margin: 0; padding: 8px 10px; border-top: 1px solid var(--border); font-family: var(--mono); font-size: 11px; max-height: 200px; overflow: auto; white-space: pre-wrap; color: var(--fg2); }
+
+.deploy { flex: 1; overflow: auto; padding: 18px 22px; display: flex; flex-direction: column; gap: 12px; max-width: 760px; }
+.dhead { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; } .dhead .spacer { flex: 1; }
+.dstep { display: flex; gap: 12px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--bg2); }
+.dstep .n { color: var(--fg3); padding-top: 1px; } .dstep.done .n { color: var(--local); }
+.dstep .body { flex: 1; min-width: 0; } .dstep .t { font-weight: 600; margin-bottom: 6px; }
+.dstep .row { display: flex; gap: 8px; align-items: center; } .deploy a { color: var(--cloud); text-decoration: none; }

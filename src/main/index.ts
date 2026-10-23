@@ -9,6 +9,8 @@ import { decideRoute, CODER_SYSTEM, PLANNER_SYSTEM } from './router'
 import { loadSettings, saveSettings, loadLedger, appendLedger, modelsDir } from './store'
 import { runAgent, cancelAgent, type AgentMsg } from './agent'
 import * as procs from './procs'
+import * as vercel from './vercel'
+import type { DbProvider } from '../shared/types'
 import { existsSync, mkdirSync } from 'fs'
 import { dialog } from 'electron'
 import type { TemplateId } from '../shared/types'
@@ -108,13 +110,22 @@ ipcMain.handle('project:create', async (e, p: { parent: string; name: string; te
   }
   return { root, dev: t.dev ?? null }
 })
+// ---- deploy (Vercel)
+const vlog = (e: Electron.IpcMainInvokeEvent) => (c: string) => { if (!e.sender.isDestroyed()) e.sender.send('proc:output', { id: 'vercel', chunk: c }) }
+const vtoken = () => loadSettings().vercelToken || undefined
+ipcMain.handle('vercel:status', (_e, root: string | null) => vercel.status(root, vtoken()))
+ipcMain.handle('vercel:login', (e) => vercel.login(vlog(e)))
+ipcMain.handle('vercel:link', (e, root: string, name: string) => vercel.link(root, name, vtoken(), vlog(e)))
+ipcMain.handle('vercel:addDb', (e, root: string, provider: DbProvider) => vercel.addDb(root, provider, vtoken(), vlog(e)))
+ipcMain.handle('vercel:envPull', (e, root: string) => vercel.envPull(root, vtoken(), vlog(e)))
+ipcMain.handle('vercel:deploy', (e, root: string, prod: boolean) => vercel.deploy(root, prod, vtoken(), vlog(e)))
 ipcMain.handle('dialog:message', (_e, msg: string) => dialog.showMessageBox({ message: msg }))
 
 // ---- settings
 ipcMain.handle('settings:get', () => loadSettings())
 ipcMain.handle('settings:set', (_e, s: Partial<Settings>) => saveSettings(s))
 ipcMain.handle('ledger:get', () => loadLedger())
-ipcMain.handle('app:info', () => ({ version: app.getVersion(), platform: process.platform, modelsDir, llamaBin: llama.findLlamaServer() }))
+ipcMain.handle('app:info', () => ({ version: app.getVersion(), platform: process.platform, modelsDir, llamaBin: llama.findLlamaServer(), devOpen: app.isPackaged ? null : process.env.SC_OPEN ?? null, devView: app.isPackaged ? null : process.env.SC_VIEW ?? null }))
 ipcMain.handle('shell:open', (_e, url: string) => shell.openExternal(url))
 
 // ---- fs

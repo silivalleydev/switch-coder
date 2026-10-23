@@ -9,6 +9,7 @@ files:
   - package.json
 asarUnpack:
   - resources/**
+  - node_modules/vercel/**
 mac:
   category: public.app-category.developer-tools
   target:

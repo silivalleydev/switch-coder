@@ -1,10 +1,10 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { AgentEvent, ChatChunk, ChatMessage, FileNode, LedgerEntry, LocalServerStatus, ModelTarget, ProcInfo, ProcOutput, RouteDecision, Settings, TemplateId } from '../shared/types'
+import type { AgentEvent, ChatChunk, ChatMessage, FileNode, LedgerEntry, LocalServerStatus, ModelTarget, ProcInfo, ProcOutput, RouteDecision, Settings, TemplateId, VercelStatus, DbProvider } from '../shared/types'
 
 const api = {
   settings: { get: (): Promise<Settings> => ipcRenderer.invoke('settings:get'), set: (s: Partial<Settings>): Promise<Settings> => ipcRenderer.invoke('settings:set', s) },
   ledger: (): Promise<LedgerEntry[]> => ipcRenderer.invoke('ledger:get'),
-  appInfo: (): Promise<{ version: string; platform: string; modelsDir: string; llamaBin: string | null }> => ipcRenderer.invoke('app:info'),
+  appInfo: (): Promise<{ version: string; platform: string; modelsDir: string; llamaBin: string | null; devOpen: string | null; devView: string | null }> => ipcRenderer.invoke('app:info'),
   openExternal: (url: string) => ipcRenderer.invoke('shell:open', url),
   fs: {
     pickFolder: (): Promise<string | null> => ipcRenderer.invoke('fs:pickFolder'),
@@ -46,6 +46,14 @@ const api = {
   project: {
     pickParent: (): Promise<string | null> => ipcRenderer.invoke('project:pickParent'),
     create: (p: { parent: string; name: string; template: TemplateId }): Promise<{ root: string; dev: string | null }> => ipcRenderer.invoke('project:create', p),
+  },
+  vercel: {
+    status: (root: string | null): Promise<VercelStatus> => ipcRenderer.invoke('vercel:status', root),
+    login: (): Promise<{ ok: boolean; output: string }> => ipcRenderer.invoke('vercel:login'),
+    link: (root: string, name: string): Promise<{ ok: boolean; output: string }> => ipcRenderer.invoke('vercel:link', root, name),
+    addDb: (root: string, provider: DbProvider): Promise<{ ok: boolean; manual?: string; output: string }> => ipcRenderer.invoke('vercel:addDb', root, provider),
+    envPull: (root: string): Promise<{ ok: boolean; output: string }> => ipcRenderer.invoke('vercel:envPull', root),
+    deploy: (root: string, prod: boolean): Promise<{ ok: boolean; url?: string; inspect?: string; output: string }> => ipcRenderer.invoke('vercel:deploy', root, prod),
   },
   onMenu: (name: 'open-folder' | 'save', fn: () => void) => { const h = () => fn(); ipcRenderer.on(`menu:${name}`, h); return () => { ipcRenderer.off(`menu:${name}`, h) } },
 }

@@ -12,7 +12,7 @@ import { t } from './lib/i18n'
 export default function App() {
   const { init, settings, modal, openFolder, setSettings, projectRoot, closeProject } = useStore()
   const [quick, setQuick] = useState(false)
-  useEffect(() => { void init().then(() => { if (useStore.getState().llama.state === 'stopped') void window.sc.llama.start() }) }, [init])
+  useEffect(() => { void init().then(async () => { if (useStore.getState().llama.state === 'stopped') void window.sc.llama.start(); const info = await window.sc.appInfo(); if (info.devOpen) { await useStore.getState().openFolder(info.devOpen); if (info.devView) useStore.getState().setView(info.devView as 'preview') } }) }, [init])
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey

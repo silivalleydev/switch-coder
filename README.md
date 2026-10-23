@@ -8,8 +8,12 @@
 3. dev 서버 URL이 감지되면 오른쪽 **프리뷰** 탭에 자동 표시. **코드** 탭에서 수정, **터미널** 탭에서 직접 명령
 4. 막히면 **대화** 모드로 질문하거나 ⌘K 인라인 편집
 
+## 웹 배포 (Vercel) + DB
+**배포** 탭의 4단계: ① Vercel 계정 연결(브라우저 로그인 또는 토큰) → ② 프로젝트 링크 → ③ DB 추가(Supabase 기본 / Neon, Vercel 마켓플레이스 통합이라 환경변수가 자동 주입되고 `.env.local`로 받아짐) → ④ 프로덕션/프리뷰 배포 → 라이브 URL.
+에이전트에게 "배포해줘"라고 해도 `deploy` 도구로 같은 일을 한다. Vercel CLI는 앱에 동봉(`node_modules/vercel`, asar 밖으로 unpack). 비용은 전부 사용자의 Vercel/Supabase 계정에서 발생하며 Hobby 무료 플랜은 비상업 용도 한정.
+
 ## 에이전트 도구
-`list_files`, `read_file`, `write_file`, `run_command(background?)`, `finish`. 프로젝트 폴더 밖 접근과 위험 명령(`rm -rf /`, `sudo` 등)은 차단. 같은 에러 4회 실패 시 중단하고 설명. 반복 상한 30회.
+`list_files`, `read_file`, `write_file`, `run_command(background?)`, `deploy`, `finish`. 프로젝트 폴더 밖 접근과 위험 명령(`rm -rf /`, `sudo` 등)은 차단. 같은 에러 4회 실패 시 중단하고 설명. 반복 상한 30회.
 
 ## 우리만의 차별점
 1. **Switch Router** — 요청마다 복잡도 점수(0-100)를 매겨 로컬 Flint ↔ 클라우드를 자동 선택. 보내기 전에 어디로 갈지와 이유를 미리 보여준다. `⌘/`로 수동 토글.

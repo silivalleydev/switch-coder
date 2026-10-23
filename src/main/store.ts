@@ -16,6 +16,7 @@ export const defaultSettings: Settings = {
   contextSize: 16384,
   gpuLayers: 99,
   reasoningBudget: 1024,
+  vercelToken: '',
   byokEnabled: false,
   anthropicApiKey: '',
   anthropicModel: 'claude-sonnet-5-5',

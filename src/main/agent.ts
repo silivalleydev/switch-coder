@@ -88,10 +88,12 @@ function trim(messages: Msg[], budgetChars: number) {
   }
 }
 
-export async function runAgent(opts: { root: string; task: string; target: ModelTarget; apiKey?: string; lang: 'ko' | 'en'; history: Msg[]; maxIterations?: number; contextChars?: number }, emit: (e: AgentEvent) => void): Promise<Msg[]> {
+export async function runAgent(opts: { root: string; task: string; target: ModelTarget; apiKey?: string; lang: 'ko' | 'en'; history: Msg[]; maxIterations?: number; contextChars?: number; signal?: AbortSignal; context?: string; allowDeploy?: boolean }, emit: (e: AgentEvent) => void): Promise<Msg[]> {
   const runId = randomUUID()
   const ac = new AbortController(); running.set(runId, ac)
-  const messages: Msg[] = opts.history.length ? [...opts.history] : [{ role: 'system', content: SYSTEM(opts.root, opts.lang) }]
+  opts.signal?.addEventListener('abort', () => ac.abort(), { once: true })
+  const sys = SYSTEM(opts.root, opts.lang) + (opts.context ? `\n\nProject context (from the approved plan):\n${opts.context}` : '')
+  const messages: Msg[] = opts.history.length ? [...opts.history] : [{ role: 'system', content: sys }]
   messages.push({ role: 'user', content: opts.task })
   const base = (opts.target.baseUrl ?? '').replace(/\/$/, '')
   const log = (s: string) => emit({ runId, type: 'status', text: s })
@@ -102,7 +104,7 @@ export async function runAgent(opts: { root: string; task: string; target: Model
       if (ac.signal.aborted) throw new Error('cancelled')
       trim(messages, opts.contextChars ?? 40_000)
       const r = await fetch(`${base}/chat/completions`, { method: 'POST', signal: ac.signal, headers: { 'content-type': 'application/json', ...(opts.apiKey ? { authorization: `Bearer ${opts.apiKey}` } : {}) },
-        body: JSON.stringify({ model: opts.target.model, messages, tools: TOOLS, tool_choice: 'auto', max_tokens: 6144, temperature: 1.0, stream: false }) })
+        body: JSON.stringify({ model: opts.target.model, messages, tools: opts.allowDeploy === false ? TOOLS.filter((t) => t.function.name !== 'deploy') : TOOLS, tool_choice: 'auto', max_tokens: 6144, temperature: 1.0, stream: false }) })
       if (!r.ok) throw new Error(`${opts.target.label}: HTTP ${r.status} ${(await r.text().catch(() => '')).slice(0, 300)}`)
       const j = (await r.json()) as { choices: { message: Msg & { reasoning_content?: string }; finish_reason: string }[] }
       const m = j.choices[0].message
@@ -133,3 +135,23 @@ export async function runAgent(opts: { root: string; task: string; target: Model
   return messages
 }
 export type { Msg as AgentMsg }
+
+/** One constrained model call that must answer via a single tool (grammar-constrained in llama.cpp). */
+export async function structuredCall<T>(opts: { target: ModelTarget; apiKey?: string; system: string; user: string; tool: { name: string; description: string; parameters: Record<string, unknown> }; signal?: AbortSignal; maxTokens?: number }): Promise<{ data: T; reasoning?: string }> {
+  const base = (opts.target.baseUrl ?? '').replace(/\/$/, '')
+  const body = (force: boolean) => JSON.stringify({ model: opts.target.model, stream: false, max_tokens: opts.maxTokens ?? 4096, temperature: 0.7,
+    messages: [{ role: 'system', content: opts.system }, { role: 'user', content: opts.user + (force ? `\n\nYou MUST call the ${opts.tool.name} tool now with valid JSON arguments. Do not answer in prose.` : '') }],
+    tools: [{ type: 'function', function: opts.tool }], tool_choice: force ? 'required' : 'auto' })
+  let reasoning: string | undefined
+  for (const force of [false, true]) {
+    const r = await fetch(`${base}/chat/completions`, { method: 'POST', signal: opts.signal, headers: { 'content-type': 'application/json', ...(opts.apiKey ? { authorization: `Bearer ${opts.apiKey}` } : {}) }, body: body(force) })
+    if (!r.ok) throw new Error(`${opts.target.label}: HTTP ${r.status} ${(await r.text().catch(() => '')).slice(0, 300)}`)
+    const j = (await r.json()) as { choices: { message: { content?: string; reasoning_content?: string; tool_calls?: ToolCall[] } }[] }
+    const m = j.choices[0]?.message ?? {}
+    reasoning = m.reasoning_content ?? reasoning
+    const tc = m.tool_calls?.find((t) => t.function.name === opts.tool.name) ?? m.tool_calls?.[0]
+    const raw = tc?.function.arguments ?? m.content?.match(/\{[\s\S]*\}/)?.[0]
+    if (raw) { try { return { data: JSON.parse(raw) as T, reasoning } } catch { /* retry forced */ } }
+  }
+  throw new Error(`Model did not return valid ${opts.tool.name} data`)
+}

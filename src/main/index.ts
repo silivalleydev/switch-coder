@@ -10,6 +10,9 @@ import { loadSettings, saveSettings, loadLedger, appendLedger, modelsDir } from 
 import { runAgent, cancelAgent, type AgentMsg } from './agent'
 import * as procs from './procs'
 import * as vercel from './vercel'
+import * as pipeline from './pipeline'
+import * as snaps from './snapshots'
+import type { PipelineMode, Plan, Blueprint } from '../shared/types'
 import type { DbProvider } from '../shared/types'
 import { existsSync, mkdirSync } from 'fs'
 import { dialog } from 'electron'
@@ -110,6 +113,28 @@ ipcMain.handle('project:create', async (e, p: { parent: string; name: string; te
   }
   return { root, dev: t.dev ?? null }
 })
+// ---- all-in-one pipeline
+function agentTarget(s: Settings): { target: ModelTarget; apiKey?: string } {
+  const { local, cloud } = targets(s)
+  const t = s.byokEnabled && s.routeMode === 'cloud' && cloud.kind === 'openai-compatible' ? cloud : local
+  if (t.kind === 'local' && llama.getStatus().state !== 'running') throw new Error('Local model is not running. Start it from the status bar.')
+  return { target: t, apiKey: t.kind === 'openai-compatible' ? s.openaiCompatApiKey : undefined }
+}
+const pipeEmit = (sender: Electron.WebContents) => ({
+  state: (st: import('../shared/types').PipelineState) => { if (!sender.isDestroyed()) sender.send('pipeline:state', st) },
+  agent: (ev: import('../shared/types').AgentEvent) => { if (!sender.isDestroyed()) sender.send('agent:event', ev) },
+  activity: (a: Omit<import('../shared/types').Activity, 'id' | 'at'>) => { if (!sender.isDestroyed()) sender.send('pipeline:activity', { ...a, id: randomUUID(), at: Date.now() }) },
+})
+ipcMain.handle('pipeline:start', (e, p: { root: string; request: string; mode: PipelineMode; wantDeploy: boolean }) => { const s = loadSettings(); const { target, apiKey } = agentTarget(s); return pipeline.start({ ...p, target, apiKey, lang: s.language }, pipeEmit(e.sender)) })
+ipcMain.handle('pipeline:approve', (_e, root: string, edits?: { plan?: Plan; blueprint?: Blueprint }) => pipeline.approve(root, edits))
+ipcMain.handle('pipeline:cancel', (_e, root: string) => pipeline.cancel(root))
+ipcMain.handle('pipeline:skip', (_e, root: string) => pipeline.skipTask(root))
+ipcMain.handle('pipeline:current', (_e, root: string) => pipeline.current(root))
+ipcMain.handle('pipeline:decideMode', (_e, root: string, request: string, mode: PipelineMode) => pipeline.decideMode(root, request, mode))
+ipcMain.handle('snapshots:list', (_e, root: string) => snaps.list(root))
+ipcMain.handle('snapshots:restore', (_e, root: string, sha: string) => snaps.restore(root, sha))
+ipcMain.handle('snapshots:take', (_e, root: string, label: string) => snaps.snapshot(root, label))
+
 // ---- deploy (Vercel)
 const vlog = (e: Electron.IpcMainInvokeEvent) => (c: string) => { if (!e.sender.isDestroyed()) e.sender.send('proc:output', { id: 'vercel', chunk: c }) }
 const vtoken = () => loadSettings().vercelToken || undefined

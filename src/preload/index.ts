@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { AgentEvent, ChatChunk, ChatMessage, FileNode, LedgerEntry, LocalServerStatus, ModelTarget, ProcInfo, ProcOutput, RouteDecision, Settings, TemplateId, VercelStatus, DbProvider } from '../shared/types'
+import type { AgentEvent, ChatChunk, ChatMessage, FileNode, LedgerEntry, LocalServerStatus, ModelTarget, ProcInfo, ProcOutput, RouteDecision, Settings, TemplateId, VercelStatus, DbProvider, PipelineState, PipelineMode, Plan, Blueprint, Activity, Snapshot } from '../shared/types'
 
 const api = {
   settings: { get: (): Promise<Settings> => ipcRenderer.invoke('settings:get'), set: (s: Partial<Settings>): Promise<Settings> => ipcRenderer.invoke('settings:set', s) },
@@ -46,6 +46,21 @@ const api = {
   project: {
     pickParent: (): Promise<string | null> => ipcRenderer.invoke('project:pickParent'),
     create: (p: { parent: string; name: string; template: TemplateId }): Promise<{ root: string; dev: string | null }> => ipcRenderer.invoke('project:create', p),
+  },
+  pipeline: {
+    start: (p: { root: string; request: string; mode: PipelineMode; wantDeploy: boolean }): Promise<PipelineState> => ipcRenderer.invoke('pipeline:start', p),
+    approve: (root: string, edits?: { plan?: Plan; blueprint?: Blueprint }): Promise<PipelineState | null> => ipcRenderer.invoke('pipeline:approve', root, edits),
+    cancel: (root: string): Promise<PipelineState | null> => ipcRenderer.invoke('pipeline:cancel', root),
+    skip: (root: string): Promise<PipelineState | null> => ipcRenderer.invoke('pipeline:skip', root),
+    current: (root: string): Promise<PipelineState | null> => ipcRenderer.invoke('pipeline:current', root),
+    decideMode: (root: string, request: string, mode: PipelineMode): Promise<'full' | 'quick'> => ipcRenderer.invoke('pipeline:decideMode', root, request, mode),
+    onState: (fn: (s: PipelineState) => void) => { const h = (_: unknown, s: PipelineState) => fn(s); ipcRenderer.on('pipeline:state', h); return () => { ipcRenderer.off('pipeline:state', h) } },
+    onActivity: (fn: (a: Activity) => void) => { const h = (_: unknown, a: Activity) => fn(a); ipcRenderer.on('pipeline:activity', h); return () => { ipcRenderer.off('pipeline:activity', h) } },
+  },
+  snapshots: {
+    list: (root: string): Promise<Snapshot[]> => ipcRenderer.invoke('snapshots:list', root),
+    restore: (root: string, sha: string): Promise<boolean> => ipcRenderer.invoke('snapshots:restore', root, sha),
+    take: (root: string, label: string): Promise<string | null> => ipcRenderer.invoke('snapshots:take', root, label),
   },
   vercel: {
     status: (root: string | null): Promise<VercelStatus> => ipcRenderer.invoke('vercel:status', root),

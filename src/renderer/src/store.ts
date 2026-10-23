@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import type { ChatMessage, FileNode, LocalServerStatus, RouteDecision, Settings, ModelTarget, LedgerEntry, AgentEvent, TemplateId } from '../../shared/types'
+import type { ChatMessage, FileNode, LocalServerStatus, RouteDecision, Settings, ModelTarget, LedgerEntry, AgentEvent, TemplateId, PipelineState, PipelineMode, Activity, Plan, Blueprint, Snapshot } from '../../shared/types'
+import { humanize } from './lib/humanize'
 
 export interface Tab { path: string; name: string; content: string; saved: string; language: string }
 export interface UiMessage extends ChatMessage { id: string; reasoning?: string; target?: ModelTarget; decision?: RouteDecision; streaming?: boolean; error?: string }
@@ -43,6 +44,21 @@ interface State {
   agentRunId: string | null
   recents: string[]
   creating: boolean
+  // pipeline
+  pipeline: PipelineState | null
+  activities: Activity[]
+  pipeMode: PipelineMode
+  wantDeploy: boolean
+  snapshots: Snapshot[]
+  setPipeMode: (m: PipelineMode) => void
+  setWantDeploy: (b: boolean) => void
+  startPipeline: (request: string) => Promise<void>
+  approvePipeline: (edits?: { plan?: Plan; blueprint?: Blueprint }) => Promise<void>
+  cancelPipeline: () => Promise<void>
+  skipTask: () => Promise<void>
+  refreshSnapshots: () => Promise<void>
+  restoreSnapshot: (sha: string) => Promise<void>
+  clearActivities: () => void
   setView: (v: View) => void
   setChatMode: (m: 'build' | 'chat') => void
   setPreviewUrl: (u: string | null) => void
@@ -76,6 +92,20 @@ export const useStore = create<State>((set, get) => ({
   settings: null, projectRoot: null, tree: null, tabs: [], active: null, messages: [], steps: [], llama: { state: 'stopped' }, ledger: [], modal: null, selection: null,
   view: 'code', chatMode: 'build', previewUrl: null, liveUrl: null, setLiveUrl: (liveUrl) => set({ liveUrl }), terminal: '', agentItems: [], agentRunning: false, agentRunId: null, creating: false,
   recents: (() => { try { return JSON.parse(localStorage.getItem('recents') ?? '[]') as string[] } catch { return [] } })(),
+  pipeline: null, activities: [], pipeMode: 'auto', wantDeploy: false, snapshots: [],
+  setPipeMode: (pipeMode) => set({ pipeMode }), setWantDeploy: (wantDeploy) => set({ wantDeploy }),
+  startPipeline: async (request) => {
+    const root = get().projectRoot; if (!root || get().pipeline?.running) return
+    set((st) => ({ activities: [...st.activities, { id: crypto.randomUUID(), at: Date.now(), kind: 'ask', text: request }], chatMode: 'build' }))
+    try { const st = await window.sc.pipeline.start({ root, request, mode: get().pipeMode, wantDeploy: get().wantDeploy }); set({ pipeline: st }) }
+    catch (e) { set((st) => ({ activities: [...st.activities, { id: crypto.randomUUID(), at: Date.now(), kind: 'error', text: e instanceof Error ? e.message : String(e) }] })) }
+  },
+  approvePipeline: async (edits) => { const root = get().projectRoot; if (!root) return; const st = await window.sc.pipeline.approve(root, edits); if (st) set({ pipeline: st }) },
+  cancelPipeline: async () => { const root = get().projectRoot; if (!root) return; const st = await window.sc.pipeline.cancel(root); if (st) set({ pipeline: st }) },
+  skipTask: async () => { const root = get().projectRoot; if (!root) return; const st = await window.sc.pipeline.skip(root); if (st) set({ pipeline: st }) },
+  refreshSnapshots: async () => { const root = get().projectRoot; if (root) set({ snapshots: await window.sc.snapshots.list(root) }) },
+  restoreSnapshot: async (sha) => { const root = get().projectRoot; if (!root) return; const ok = await window.sc.snapshots.restore(root, sha); set((st) => ({ activities: [...st.activities, { id: crypto.randomUUID(), at: Date.now(), kind: ok ? 'ok' : 'error', text: ok ? '되돌렸습니다' : '되돌리기 실패' }] })); await get().refreshTree(); set({ tabs: [], active: null }) },
+  clearActivities: () => set({ activities: [] }),
   setView: (view) => set({ view }),
   setChatMode: (chatMode) => set({ chatMode }),
   setPreviewUrl: (previewUrl) => set({ previewUrl, view: previewUrl ? 'preview' : get().view }),
@@ -102,7 +132,7 @@ export const useStore = create<State>((set, get) => ({
     } catch (e) { set((st) => ({ terminal: st.terminal + '\n[error] ' + (e instanceof Error ? e.message : String(e)) + '\n' })) }
     finally { set({ creating: false }) }
   },
-  closeProject: () => set({ projectRoot: null, tree: null, tabs: [], active: null, agentItems: [], previewUrl: null, messages: [], steps: [] }),
+  closeProject: () => set({ projectRoot: null, tree: null, tabs: [], active: null, agentItems: [], activities: [], pipeline: null, previewUrl: null, liveUrl: null, messages: [], steps: [] }),
 
   init: async () => {
     const settings = await window.sc.settings.get()
@@ -114,7 +144,11 @@ export const useStore = create<State>((set, get) => ({
       set((st) => ({ messages: st.messages.map((m) => (m.id === c.requestId ? { ...m, content: m.content + (c.delta ?? ''), reasoning: (m.reasoning ?? '') + (c.reasoning ?? ''), streaming: !c.done, error: c.error && c.error !== 'cancelled' ? c.error : m.error } : m)) }))
       if (c.done) { currentRequest = null; void get().refreshLedger() }
     })
+    window.sc.pipeline.onState((p) => { set({ pipeline: p }); if (p.deployUrl) set({ liveUrl: p.deployUrl }); if (!p.running) void get().refreshTree() })
+    window.sc.pipeline.onActivity((a) => set((st) => ({ activities: [...st.activities, a].slice(-400) })))
     window.sc.agent.onEvent((ev: AgentEvent) => {
+      const h = humanize(ev, get().settings?.language ?? 'ko')
+      if (h) set((st) => ({ activities: [...st.activities, { id: crypto.randomUUID(), at: Date.now(), ...h }].slice(-400) }))
       set((st) => {
         const items = [...st.agentItems]
         if (ev.type === 'status') { if (ev.text === 'start') return { agentRunId: ev.runId }; return { terminal: (st.terminal + ev.text).slice(-60000) } }
@@ -140,7 +174,9 @@ export const useStore = create<State>((set, get) => ({
     localStorage.setItem('lastFolder', root)
     const recents = [root, ...get().recents.filter((r) => r !== root)].slice(0, 8)
     localStorage.setItem('recents', JSON.stringify(recents))
-    set({ projectRoot: root, tabs: [], active: null, recents, agentItems: [], previewUrl: null, liveUrl: null, view: 'code' })
+    set({ projectRoot: root, tabs: [], active: null, recents, agentItems: [], activities: [], previewUrl: null, liveUrl: null, view: 'code', pipeline: null })
+    void window.sc.pipeline.current(root).then((p) => { if (p) set({ pipeline: { ...p, running: false, awaiting: p.awaiting ?? (p.stage !== 'done' ? 'stopped' : null) }, liveUrl: p.deployUrl ?? null }) })
+    void get().refreshSnapshots()
     await get().refreshTree()
   },
   refreshTree: async () => { const root = get().projectRoot; if (root) set({ tree: await window.sc.fs.tree(root) }) },

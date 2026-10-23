@@ -139,3 +139,29 @@ table.ledger { width: 100%; border-collapse: collapse; font-size: 12px; } table.
 .dstep .n { color: var(--fg3); padding-top: 1px; } .dstep.done .n { color: var(--local); }
 .dstep .body { flex: 1; min-width: 0; } .dstep .t { font-weight: 600; margin-bottom: 6px; }
 .dstep .row { display: flex; gap: 8px; align-items: center; } .deploy a { color: var(--cloud); text-decoration: none; }
+
+/* ---- pipeline */
+.pipe { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.pmap { padding: 8px 10px; border-bottom: 1px solid var(--border); background: var(--bg2); display: flex; flex-direction: column; gap: 6px; }
+.stages { display: flex; gap: 4px; flex-wrap: wrap; }
+.stage { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--border); font-size: 11px; color: var(--fg3); }
+.stage.done { color: var(--local); border-color: rgba(34,211,165,.35); } .stage.active { color: var(--fg); border-color: var(--accent); background: rgba(124,92,255,.12); }
+.spin { animation: spin 1s linear infinite; } @keyframes spin { to { transform: rotate(360deg); } }
+.now { display: flex; align-items: center; gap: 8px; font-size: 12.5px; } .now .spacer { flex: 1; } .now .ok { color: var(--local); }
+.tasks { display: flex; flex-wrap: wrap; gap: 4px; } .task { font-size: 11px; padding: 1px 7px; border-radius: 6px; border: 1px solid var(--border); color: var(--fg3); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.task.done { color: var(--local); } .task.running { color: var(--fg); border-color: var(--accent); } .task.failed { color: var(--danger); } .task.skipped { opacity: .5; }
+.act { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; line-height: 1.45; padding: 4px 2px; color: var(--fg2); }
+.act svg { flex: none; margin-top: 3px; } .act .t { min-width: 0; white-space: pre-wrap; word-break: break-word; }
+.act.ask { color: var(--fg); background: var(--bg3); border-radius: 8px; padding: 8px 10px; } .act.ok { color: var(--local); } .act.error { color: var(--danger); } .act.fix { color: var(--warn); } .act.think { color: var(--fg3); }
+.act details { margin-top: 2px; } .act summary { font-size: 11px; color: var(--fg3); cursor: pointer; } .act pre { margin: 4px 0 0; font-family: var(--mono); font-size: 11px; white-space: pre-wrap; max-height: 180px; overflow: auto; color: var(--fg3); border-left: 2px solid var(--border); padding-left: 8px; }
+.card { border: 1px solid var(--accent); border-radius: 10px; padding: 12px; background: var(--bg); display: flex; flex-direction: column; gap: 8px; }
+.card.okb { border-color: rgba(34,211,165,.5); } .card.errb { border-color: rgba(239,91,107,.5); }
+.card-h { display: flex; align-items: center; gap: 8px; } .card-h .spacer { flex: 1; } .card-f { display: flex; justify-content: flex-end; gap: 8px; }
+.card textarea { width: 100%; font-family: var(--mono); font-size: 12px; }
+.plan-body h3 { margin: 0 0 4px; font-size: 14px; } .plan-body p { margin: 0 0 8px; color: var(--fg2); font-size: 12.5px; }
+.plan-body .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; } .plan-body ul { margin: 4px 0 0; padding-left: 16px; color: var(--fg2); }
+.steps-list { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; } .steps-list input { width: 100%; font-size: 12.5px; padding: 3px 6px; }
+.pipe-foot { border-top: 1px solid var(--border); padding: 4px 8px; display: flex; align-items: center; gap: 6px; position: relative; }
+.undo { position: relative; } .undo-list { position: absolute; bottom: 30px; left: 0; width: 320px; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 6px; z-index: 10; max-height: 260px; overflow: auto; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+.undo-item { display: flex; justify-content: space-between; gap: 8px; padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: 12px; } .undo-item:hover { background: var(--bg3); }
+.pipe-opts { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--fg2); }

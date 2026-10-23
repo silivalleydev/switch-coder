@@ -3,6 +3,7 @@ import { Send, Square, Trash2, ListChecks, Cpu, Cloud, Lock, Shuffle, Hammer, Me
 import { useStore, rel, findFile, type UiMessage, type AgentItem } from '../store'
 import { t } from '../lib/i18n'
 import { parseBlocks, safeJsonArray } from '../lib/code'
+import Pipeline from './Pipeline'
 import type { RouteDecision, RouteMode } from '../../../shared/types'
 
 function CodeBlock({ lang, path, code }: { lang: string; path: string | null; code: string }) {
@@ -77,7 +78,7 @@ function AgentTimeline() {
 }
 
 export default function ChatPanel() {
-  const { messages, send, cancel, clearChat, settings, setSettings, steps, setSteps, llama, tabs, active, tree, chatMode, setChatMode, startAgent, cancelAgent, clearAgent, agentRunning } = useStore()
+  const { messages, send, cancel, clearChat, settings, setSettings, steps, setSteps, llama, tabs, active, tree, chatMode, setChatMode, cancelAgent, clearAgent, agentRunning, startPipeline, pipeline, pipeMode, setPipeMode, wantDeploy, setWantDeploy, clearActivities, cancelPipeline } = useStore()
   const lang = settings?.language ?? 'ko'
   const [text, setText] = useState('')
   const [preview, setPreview] = useState<RouteDecision | null>(null)
@@ -101,7 +102,7 @@ export default function ChatPanel() {
     if (arr) setSteps(arr.map((s) => ({ title: s.title, detail: s.detail, files: s.files ?? [], status: 'todo' })))
   }, [messages, setSteps])
 
-  const submit = (opts?: { mode?: 'chat' | 'plan'; forceTarget?: 'local' | 'cloud' }) => { if (!text.trim()) return; if (chatMode === 'build') { if (agentRunning) return; void startAgent(text); setText(''); return } if (streaming) return; void send(text, opts); setText('') }
+  const submit = (opts?: { mode?: 'chat' | 'plan'; forceTarget?: 'local' | 'cloud' }) => { if (!text.trim()) return; if (chatMode === 'build') { if (pipeline?.running || agentRunning) return; void startPipeline(text); setText(''); return } if (streaming) return; void send(text, opts); setText('') }
   const runStep = (i: number) => {
     const s = steps[i]
     setSteps(steps.map((x, j) => (j === i ? { ...x, status: 'running' } : x)))
@@ -121,9 +122,9 @@ export default function ChatPanel() {
           {byok && <button className={'cloud' + (mode === 'cloud' ? ' on' : '')} onClick={() => setMode('cloud')}><Cloud size={11} /> {t(lang, 'cloud')}</button>}
           <button className={'privacy' + (mode === 'privacy-lock' ? ' on' : '')} onClick={() => setMode('privacy-lock')} title={t(lang, 'privacy')}><Lock size={11} /></button>
         </div>
-        <button className="ghost sm" onClick={() => (chatMode === 'build' ? void clearAgent() : clearChat())} title="Clear"><Trash2 size={13} /></button>
+        <button className="ghost sm" onClick={() => (chatMode === 'build' ? (clearActivities(), void clearAgent()) : clearChat())} title="Clear"><Trash2 size={13} /></button>
       </div>
-      {chatMode === 'build' ? <AgentTimeline /> : <div className="msgs">
+      {chatMode === 'build' ? <Pipeline /> : <div className="msgs">
         {messages.length === 0 && <div className="muted" style={{ padding: 10, lineHeight: 1.6 }}>{t(lang, 'emptyChat')}<br /><br />{t(lang, 'planHint')}</div>}
         {messages.map((m) => (
           <div key={m.id} className={'msg ' + m.role}>
@@ -145,6 +146,7 @@ export default function ChatPanel() {
         </div>
       )}
       <div className="composer">
+        {chatMode === 'build' && <div className="pipe-opts"><span>{lang === 'ko' ? '방식' : 'Mode'}</span><div className="seg"><button className={pipeMode === 'auto' ? 'on' : ''} onClick={() => setPipeMode('auto')}>{lang === 'ko' ? '자동' : 'Auto'}</button><button className={pipeMode === 'full' ? 'on' : ''} onClick={() => setPipeMode('full')}>{lang === 'ko' ? '기획부터' : 'Full'}</button><button className={pipeMode === 'quick' ? 'on' : ''} onClick={() => setPipeMode('quick')}>{lang === 'ko' ? '바로 수정' : 'Quick'}</button></div><label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}><input type="checkbox" checked={wantDeploy} onChange={(e) => setWantDeploy(e.target.checked)} /> {lang === 'ko' ? '끝나면 배포까지' : 'Deploy when done'}</label></div>}
         <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder={chatMode === 'build' ? t(lang, 'buildPlaceholder') : t(lang, 'placeholder')}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); submit() } }} />
         <div className="row">
@@ -153,7 +155,7 @@ export default function ChatPanel() {
           {active && <span className="muted" style={{ fontSize: 11 }}>@ {tabs.find((x) => x.path === active)?.name}</span>}
           {chatMode === 'chat' && <button className="sm" title={t(lang, 'planHint')} disabled={streaming || !text.trim()} onClick={() => submit({ mode: 'plan' })}><ListChecks size={12} /> {t(lang, 'plan')}</button>}
           {chatMode === 'build'
-            ? (agentRunning ? <button className="sm" onClick={cancelAgent}><Square size={12} /> {t(lang, 'stop')}</button> : <button className="primary sm" disabled={!text.trim() || llama.state !== 'running'} onClick={() => submit()}><Hammer size={12} /> {t(lang, 'build')}</button>)
+            ? ((pipeline?.running || agentRunning) ? <button className="sm" onClick={() => { void cancelPipeline(); cancelAgent() }}><Square size={12} /> {t(lang, 'stop')}</button> : <button className="primary sm" disabled={!text.trim() || llama.state !== 'running' || !!pipeline?.awaiting?.startsWith('approve')} onClick={() => submit()}><Hammer size={12} /> {t(lang, 'build')}</button>)
             : (streaming ? <button className="sm" onClick={cancel}><Square size={12} /> {t(lang, 'stop')}</button> : <button className="primary sm" disabled={!text.trim() || (mode !== 'cloud' && llama.state !== 'running' && preview?.target !== 'cloud')} onClick={() => submit()}><Send size={12} /> {t(lang, 'send')}</button>)}
         </div>
       </div>

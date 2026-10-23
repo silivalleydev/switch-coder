@@ -107,3 +107,24 @@ export interface Template { id: TemplateId; name: string; desc: { ko: string; en
 // ---- deploy (Vercel)
 export type DbProvider = 'supabase' | 'neon'
 export interface VercelStatus { cliAvailable: boolean; loggedIn: boolean; user?: string; project?: { id: string; orgId: string; name?: string }; db: DbProvider | null; envKeys: string[] }
+
+// ---- all-in-one pipeline (plan → blueprint → build → qa → deploy)
+export type Stage = 'analyze' | 'plan' | 'blueprint' | 'build' | 'qa' | 'deploy' | 'done'
+export interface ProjectAnalysis { overview: string; stack: string; structure: string[]; entryPoints: string[]; conventions: string[]; howToRun: string; risks: string[] }
+export type PipelineMode = 'auto' | 'full' | 'quick'
+export interface Plan { title: string; summary: string; screens: string[]; features: string[]; outOfScope: string[] }
+export interface Blueprint { stack: string; files: { path: string; purpose: string }[]; dataModel: string[]; tasks: { title: string; detail: string; files: string[]; verify: string }[] }
+export interface TaskState { title: string; detail: string; files: string[]; verify: string; status: 'todo' | 'running' | 'done' | 'failed' | 'skipped'; attempts: number; note?: string }
+export interface QaResult { ok: boolean; checks: { name: string; command: string; ok: boolean; output: string }[]; fixAttempts: number }
+export interface PipelineState {
+  id: string; root: string; request: string; mode: 'full' | 'quick'; wantDeploy: boolean
+  stage: Stage; running: boolean; cancelled: boolean
+  awaiting: null | 'approve-plan' | 'approve-blueprint' | 'vercel-setup' | 'stopped'
+  plan?: Plan; blueprint?: Blueprint; tasks: TaskState[]; currentTask: number
+  qa?: QaResult; deployUrl?: string; error?: string
+  analysisDoc?: string; analyzedFresh?: boolean
+  startedAt: number; updatedAt: number
+  modelCalls: number
+}
+export interface Activity { id: string; at: number; kind: 'info' | 'think' | 'file' | 'cmd' | 'error' | 'fix' | 'ok' | 'ask'; text: string; detail?: string }
+export interface Snapshot { sha: string; at: number; label: string }

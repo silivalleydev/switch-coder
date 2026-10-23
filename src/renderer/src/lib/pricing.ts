@@ -1,0 +1,12 @@
+/** Switch Coder plans. 100% local inference → zero per-user infra cost for us. Priced well below Cursor (Hobby $0 / Pro $20 / Pro+ $60 / Teams $40 per seat, Oct 2026). */
+export interface Plan { id: 'free' | 'pro' | 'max' | 'team'; name: string; priceMo: number; priceYr?: number; lifetime?: number; perSeat?: boolean; tagline: { ko: string; en: string }; features: { ko: string[]; en: string[] }; cursorEquivalent: string }
+export const plans: Plan[] = [
+  { id: 'free', name: 'Free', priceMo: 0, tagline: { ko: '로컬 Flint 무제한', en: 'Unlimited local Flint' }, cursorEquivalent: 'Cursor Hobby ($0, 제한된 요청)',
+    features: { ko: ['로컬 Flint 무제한 · 오프라인 · 토큰 과금 없음', '에디터 전체 기능 (Monaco, ⌘K 인라인 편집, 채팅)', 'Privacy Lock · Privacy Ledger', '커뮤니티 지원'], en: ['Unlimited local Flint · offline · no token fees', 'Full editor (Monaco, ⌘K inline edit, chat)', 'Privacy lock · privacy ledger', 'Community support'] } },
+  { id: 'pro', name: 'Pro', priceMo: 5, priceYr: 48, lifetime: 79, tagline: { ko: 'Cursor Pro의 1/4', en: 'A quarter of Cursor Pro' }, cursorEquivalent: 'Cursor Pro ($20)',
+    features: { ko: ['Free 전부 포함', 'Step Planner (큰 작업 자동 분해·단계 실행)', '여러 로컬 모델 전환 (Flint 외 GGUF 전부)', 'BYOK: 내 API 키로 클라우드 연결 + Switch Router', 'R2 미러에서 모델 고속 다운로드 · 우선 지원'], en: ['Everything in Free', 'Step Planner (auto-split big tasks, run step by step)', 'Switch between local models (any GGUF)', 'BYOK: your own API key + Switch Router', 'Fast model downloads from our mirror · priority support'] } },
+  { id: 'max', name: 'Max', priceMo: 9, priceYr: 84, lifetime: 149, tagline: { ko: '파워유저 · 평생 라이선스 가능', en: 'Power users · lifetime available' }, cursorEquivalent: 'Cursor Pro+ ($60)',
+    features: { ko: ['Pro 전부 포함', '프로젝트 전체 인덱싱 (@codebase)', '백그라운드 에이전트 (로컬 큐)', '설정·장부 암호화 동기화', '새 모델 양자화 조기 접근'], en: ['Everything in Pro', 'Whole-project indexing (@codebase)', 'Background agents (local queue)', 'Encrypted settings & ledger sync', 'Early access to new model quants'] } },
+  { id: 'team', name: 'Team', priceMo: 12, perSeat: true, tagline: { ko: 'Cursor Teams의 30%', en: '30% of Cursor Teams' }, cursorEquivalent: 'Cursor Teams ($40/seat)',
+    features: { ko: ['Max 전부 포함 (인당)', '팀 Privacy Ledger · 중앙 결제 · SSO', '공유 정책 (예: 이 저장소는 Privacy Lock 강제)', '사내 llama-server 엔드포인트 연결'], en: ['Everything in Max, per seat', 'Team privacy ledger · central billing · SSO', 'Shared policies (e.g. force privacy lock on repo X)', 'Point at an on-prem llama-server'] } },
+]

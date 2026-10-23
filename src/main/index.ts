@@ -53,6 +53,7 @@ app.whenReady().then(() => {
     { label: 'File', submenu: [{ label: 'Open Folder…', accelerator: 'CmdOrCtrl+O', click: () => win?.webContents.send('menu:open-folder') }, { label: 'Save', accelerator: 'CmdOrCtrl+S', click: () => win?.webContents.send('menu:save') }] },
     { role: 'editMenu' }, { role: 'viewMenu' }, { role: 'windowMenu' },
   ]))
+  if (!app.isPackaged && process.env.SC_QA_URL) { void import('./browserqa').then(async (m) => { const r = await m.browserQa(process.env.SC_QA_URL!); console.log('[qa] ' + JSON.stringify({ ok: r.ok, title: r.title, actions: r.actions, consoleErrors: r.consoleErrors, pageErrors: r.pageErrors, shot: r.screenshot?.length })); app.quit() }) }
   if (!app.isPackaged && process.env.SC_SELFTEST) { void procs.runCommand('echo PATH0=$(echo $PATH | cut -d: -f1) && node --version && npm --version && npx --version && which node npm', app.getPath('temp'), 60_000).then((r) => { console.log('[selftest]\n' + r.output + '[exit ' + r.code + ']'); if (process.env.SC_SELFTEST === 'exit') app.quit() }) }
   createWindow()
   iap.listen((lic) => { saveSettings({ plan: lic.plan }); win?.webContents.send('store:license', lic) })
@@ -128,8 +129,9 @@ const pipeEmit = (sender: Electron.WebContents) => ({
   agent: (ev: import('../shared/types').AgentEvent) => { if (!sender.isDestroyed()) sender.send('agent:event', ev) },
   activity: (a: Omit<import('../shared/types').Activity, 'id' | 'at'>) => { if (!sender.isDestroyed()) sender.send('pipeline:activity', { ...a, id: randomUUID(), at: Date.now() }) },
 })
-ipcMain.handle('pipeline:start', (e, p: { root: string; request: string; mode: PipelineMode; wantDeploy: boolean }) => { const s = loadSettings(); const { target, apiKey } = agentTarget(s); return pipeline.start({ ...p, target, apiKey, lang: s.language }, pipeEmit(e.sender)) })
-ipcMain.handle('pipeline:approve', (_e, root: string, edits?: { plan?: Plan; blueprint?: Blueprint }) => pipeline.approve(root, edits))
+ipcMain.handle('pipeline:start', (e, p: { root: string; request: string; mode: PipelineMode; wantDeploy: boolean; reference?: import('../shared/types').ReferenceInput }) => { const s = loadSettings(); const { target, apiKey } = agentTarget(s); return pipeline.start({ ...p, target, apiKey, lang: s.language }, pipeEmit(e.sender)) })
+ipcMain.handle('pipeline:approve', (_e, root: string, edits?: { plan?: Plan; blueprint?: Blueprint; recon?: import('../shared/types').ReconMap }) => pipeline.approve(root, edits))
+ipcMain.handle('qa:browser', (_e, url: string) => import('./browserqa').then((m) => m.browserQa(url)))
 ipcMain.handle('pipeline:cancel', (_e, root: string) => pipeline.cancel(root))
 ipcMain.handle('pipeline:skip', (_e, root: string) => pipeline.skipTask(root))
 ipcMain.handle('pipeline:current', (_e, root: string) => pipeline.current(root))

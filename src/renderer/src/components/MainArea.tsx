@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Eye, Code2, TerminalSquare, RefreshCw, ExternalLink, Square, Play, Rocket } from 'lucide-react'
+import { Eye, Code2, TerminalSquare, RefreshCw, ExternalLink, Square, Play, Rocket, MousePointerClick } from 'lucide-react'
 import DeployPanel from './DeployPanel'
 import { useStore } from '../store'
 import { t } from '../lib/i18n'
@@ -10,12 +10,14 @@ import type { ProcInfo } from '../../../shared/types'
 function Preview() {
   const { previewUrl, settings, setPreviewUrl } = useStore()
   const lang = settings?.language ?? 'ko'
+  const [checking, setChecking] = useState(false)
+  const check = async () => { if (!previewUrl) return; setChecking(true); try { const r = await window.sc.pipeline.browserQa(previewUrl); useStore.setState((st) => ({ activities: [...st.activities, { id: crypto.randomUUID(), at: Date.now(), kind: r.ok ? 'ok' : 'error', text: (lang === 'ko' ? '브라우저 점검: ' : 'Browser check: ') + `${r.actions.filter((a) => a.action === 'click').length} clicks, ${r.pageErrors.length + r.consoleErrors.length} errors`, detail: [...r.pageErrors, ...r.consoleErrors].join('\n') || undefined, image: r.screenshot }], chatMode: 'build' })) } finally { setChecking(false) } }
   const [url, setUrl] = useState(previewUrl ?? '')
   const [nonce, setNonce] = useState(0)
   useEffect(() => { setUrl(previewUrl ?? '') }, [previewUrl])
   return (
     <div className="preview">
-      <div className="bar"><input value={url} onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') setPreviewUrl(url) }} placeholder="http://localhost:5173" /><button className="ghost sm" onClick={() => setNonce((n) => n + 1)}><RefreshCw size={13} /></button><button className="ghost sm" onClick={() => previewUrl && void window.sc.openExternal(previewUrl)}><ExternalLink size={13} /></button></div>
+      <div className="bar"><input value={url} onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') setPreviewUrl(url) }} placeholder="http://localhost:5173" /><button className="ghost sm" onClick={() => setNonce((n) => n + 1)}><RefreshCw size={13} /></button><button className="ghost sm" onClick={() => previewUrl && void window.sc.openExternal(previewUrl)}><ExternalLink size={13} /></button><button className="sm" disabled={!previewUrl || checking} title={lang === 'ko' ? '버튼을 눌러보고 오류를 찾습니다' : 'Click through and find errors'} onClick={() => void check()}><MousePointerClick size={13} /> {checking ? '…' : (lang === 'ko' ? '자동 점검' : 'Auto check')}</button></div>
       {previewUrl ? <iframe key={nonce} src={previewUrl} title="preview" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals" /> : <div className="welcome"><div className="muted">{t(lang, 'noPreview')}</div></div>}
     </div>
   )

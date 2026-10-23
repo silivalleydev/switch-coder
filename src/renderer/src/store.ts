@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { ChatMessage, FileNode, LocalServerStatus, RouteDecision, Settings, ModelTarget, LedgerEntry, AgentEvent, TemplateId, PipelineState, PipelineMode, Activity, Plan, Blueprint, Snapshot } from '../../shared/types'
+import type { ChatMessage, FileNode, LocalServerStatus, RouteDecision, Settings, ModelTarget, LedgerEntry, AgentEvent, TemplateId, PipelineState, PipelineMode, Activity, Plan, Blueprint, Snapshot, ReferenceInput, ReconMap } from '../../shared/types'
 import { humanize } from './lib/humanize'
 
 export interface Tab { path: string; name: string; content: string; saved: string; language: string }
@@ -49,11 +49,13 @@ interface State {
   activities: Activity[]
   pipeMode: PipelineMode
   wantDeploy: boolean
+  reference: ReferenceInput
+  setReference: (r: Partial<ReferenceInput>) => void
   snapshots: Snapshot[]
   setPipeMode: (m: PipelineMode) => void
   setWantDeploy: (b: boolean) => void
   startPipeline: (request: string) => Promise<void>
-  approvePipeline: (edits?: { plan?: Plan; blueprint?: Blueprint }) => Promise<void>
+  approvePipeline: (edits?: { plan?: Plan; blueprint?: Blueprint; recon?: ReconMap }) => Promise<void>
   cancelPipeline: () => Promise<void>
   skipTask: () => Promise<void>
   refreshSnapshots: () => Promise<void>
@@ -92,12 +94,13 @@ export const useStore = create<State>((set, get) => ({
   settings: null, projectRoot: null, tree: null, tabs: [], active: null, messages: [], steps: [], llama: { state: 'stopped' }, ledger: [], modal: null, selection: null,
   view: 'code', chatMode: 'build', previewUrl: null, liveUrl: null, setLiveUrl: (liveUrl) => set({ liveUrl }), terminal: '', agentItems: [], agentRunning: false, agentRunId: null, creating: false,
   recents: (() => { try { return JSON.parse(localStorage.getItem('recents') ?? '[]') as string[] } catch { return [] } })(),
-  pipeline: null, activities: [], pipeMode: 'auto', wantDeploy: false, snapshots: [],
+  pipeline: null, activities: [], pipeMode: 'auto', wantDeploy: false, snapshots: [], reference: { name: '' },
+  setReference: (r) => set((st) => ({ reference: { ...st.reference, ...r } })),
   setPipeMode: (pipeMode) => set({ pipeMode }), setWantDeploy: (wantDeploy) => set({ wantDeploy }),
   startPipeline: async (request) => {
     const root = get().projectRoot; if (!root || get().pipeline?.running) return
     set((st) => ({ activities: [...st.activities, { id: crypto.randomUUID(), at: Date.now(), kind: 'ask', text: request }], chatMode: 'build' }))
-    try { const st = await window.sc.pipeline.start({ root, request, mode: get().pipeMode, wantDeploy: get().wantDeploy }); set({ pipeline: st }) }
+    try { const ref = get().reference; const st = await window.sc.pipeline.start({ root, request, mode: get().pipeMode, wantDeploy: get().wantDeploy, reference: ref.name.trim() ? ref : undefined }); set({ pipeline: st }) }
     catch (e) { set((st) => ({ activities: [...st.activities, { id: crypto.randomUUID(), at: Date.now(), kind: 'error', text: e instanceof Error ? e.message : String(e) }] })) }
   },
   approvePipeline: async (edits) => { const root = get().projectRoot; if (!root) return; const st = await window.sc.pipeline.approve(root, edits); if (st) set({ pipeline: st }) },

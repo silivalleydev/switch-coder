@@ -44,5 +44,5 @@ export function humanize(ev: AgentEvent, lang: 'ko' | 'en'): { kind: 'think' | '
 }
 
 export const STAGE_LABEL: Record<string, { ko: string; en: string }> = {
-  plan: { ko: '기획', en: 'Plan' }, blueprint: { ko: '설계', en: 'Design' }, build: { ko: '구현', en: 'Build' }, qa: { ko: 'QA', en: 'QA' }, deploy: { ko: '배포', en: 'Deploy' }, done: { ko: '완료', en: 'Done' },
+  analyze: { ko: '분석', en: 'Analyze' }, recon: { ko: '참고 앱', en: 'Reference' }, plan: { ko: '기획', en: 'Plan' }, blueprint: { ko: '설계', en: 'Design' }, build: { ko: '구현', en: 'Build' }, qa: { ko: 'QA', en: 'QA' }, deploy: { ko: '배포', en: 'Deploy' }, done: { ko: '완료', en: 'Done' },
 }

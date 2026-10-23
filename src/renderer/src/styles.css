@@ -170,3 +170,7 @@ table.ledger { width: 100%; border-collapse: collapse; font-size: 12px; } table.
 .pipe-opts { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--fg2); }
 
 .start-hero .wordmark { height: 72px; width: auto; max-width: 90vw; background: transparent; }
+
+.refbox { display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 1px dashed var(--border); border-radius: 8px; margin-bottom: 4px; }
+.refbox .row { display: flex; gap: 6px; } .refbox input { flex: 1; min-width: 0; font-size: 12px; } .refbox textarea { font-size: 12px; min-height: 0; }
+.act img.shot { display: block; margin-top: 6px; max-width: 100%; border: 1px solid var(--border); border-radius: 6px; }

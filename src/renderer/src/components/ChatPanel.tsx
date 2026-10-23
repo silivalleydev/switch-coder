@@ -78,7 +78,8 @@ function AgentTimeline() {
 }
 
 export default function ChatPanel() {
-  const { messages, send, cancel, clearChat, settings, setSettings, steps, setSteps, llama, tabs, active, tree, chatMode, setChatMode, cancelAgent, clearAgent, agentRunning, startPipeline, pipeline, pipeMode, setPipeMode, wantDeploy, setWantDeploy, clearActivities, cancelPipeline } = useStore()
+  const { messages, send, cancel, clearChat, settings, setSettings, steps, setSteps, llama, tabs, active, tree, chatMode, setChatMode, cancelAgent, clearAgent, agentRunning, startPipeline, pipeline, pipeMode, setPipeMode, wantDeploy, setWantDeploy, clearActivities, cancelPipeline, reference, setReference } = useStore()
+  const [refOpen, setRefOpen] = useState(false)
   const lang = settings?.language ?? 'ko'
   const [text, setText] = useState('')
   const [preview, setPreview] = useState<RouteDecision | null>(null)
@@ -146,7 +147,16 @@ export default function ChatPanel() {
         </div>
       )}
       <div className="composer">
-        {chatMode === 'build' && <div className="pipe-opts"><span>{lang === 'ko' ? '방식' : 'Mode'}</span><div className="seg"><button className={pipeMode === 'auto' ? 'on' : ''} onClick={() => setPipeMode('auto')}>{lang === 'ko' ? '자동' : 'Auto'}</button><button className={pipeMode === 'full' ? 'on' : ''} onClick={() => setPipeMode('full')}>{lang === 'ko' ? '기획부터' : 'Full'}</button><button className={pipeMode === 'quick' ? 'on' : ''} onClick={() => setPipeMode('quick')}>{lang === 'ko' ? '바로 수정' : 'Quick'}</button></div><label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}><input type="checkbox" checked={wantDeploy} onChange={(e) => setWantDeploy(e.target.checked)} /> {lang === 'ko' ? '끝나면 배포까지' : 'Deploy when done'}</label></div>}
+        {chatMode === 'build' && <div className="pipe-opts"><span>{lang === 'ko' ? '방식' : 'Mode'}</span><div className="seg"><button className={pipeMode === 'auto' ? 'on' : ''} onClick={() => setPipeMode('auto')}>{lang === 'ko' ? '자동' : 'Auto'}</button><button className={pipeMode === 'full' ? 'on' : ''} onClick={() => setPipeMode('full')}>{lang === 'ko' ? '기획부터' : 'Full'}</button><button className={pipeMode === 'quick' ? 'on' : ''} onClick={() => setPipeMode('quick')}>{lang === 'ko' ? '바로 수정' : 'Quick'}</button></div><label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}><input type="checkbox" checked={wantDeploy} onChange={(e) => setWantDeploy(e.target.checked)} /> {lang === 'ko' ? '끝나면 배포까지' : 'Deploy when done'}</label><button className={'ghost sm' + (reference.name ? ' on' : '')} style={reference.name ? { color: 'var(--accent)' } : undefined} onClick={() => setRefOpen(!refOpen)}>{lang === 'ko' ? (reference.name ? `참고: ${reference.name}` : '참고 앱…') : (reference.name ? `Ref: ${reference.name}` : 'Reference app…')}</button></div>}
+        {chatMode === 'build' && refOpen && (
+          <div className="refbox">
+            <div className="muted" style={{ fontSize: 11, lineHeight: 1.5 }}>{lang === 'ko' ? '"X 같은 앱"을 만들 때 X의 기능과 흐름만 참고합니다. 코드·로고·문구·이름은 가져오지 않고, 끝나면 참고 앱 이름이 남았는지 검사합니다. 공개 정보만 봅니다.' : 'For "an app like X": we study X\'s features and flows only. No code, logo, copy or name is copied, and we sweep for leftovers at the end. Public info only.'}</div>
+            <div className="row"><input placeholder={lang === 'ko' ? '참고 앱 이름 (예: Todoist)' : 'Reference app name'} value={reference.name} onChange={(e) => setReference({ name: e.target.value })} /><input placeholder="URL (선택)" value={reference.url ?? ''} onChange={(e) => setReference({ url: e.target.value })} /><input style={{ width: 120 }} placeholder={lang === 'ko' ? 'App Store ID (선택)' : 'App Store ID'} value={reference.appStoreId ?? ''} onChange={(e) => setReference({ appStoreId: e.target.value })} /></div>
+            <textarea rows={2} placeholder={lang === 'ko' ? '내가 아는 점·마음에 드는 점·싫은 점 (선택)' : 'What you know / like / dislike (optional)'} value={reference.notes ?? ''} onChange={(e) => setReference({ notes: e.target.value })} />
+            <textarea rows={2} placeholder={lang === 'ko' ? '사용자 리뷰 붙여넣기 (선택) — 불만 분석과 차별점에 씁니다. 지어내지 않습니다.' : 'Paste user reviews (optional) — used for complaints & angle; never invented.'} value={reference.reviews ?? ''} onChange={(e) => setReference({ reviews: e.target.value })} />
+            <div className="row" style={{ justifyContent: 'flex-end' }}><button className="ghost sm" onClick={() => { setReference({ name: '', url: '', notes: '', reviews: '', appStoreId: '' }); setRefOpen(false) }}>{lang === 'ko' ? '지우기' : 'Clear'}</button><button className="sm" onClick={() => setRefOpen(false)}>{lang === 'ko' ? '닫기' : 'Close'}</button></div>
+          </div>
+        )}
         <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder={chatMode === 'build' ? t(lang, 'buildPlaceholder') : t(lang, 'placeholder')}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); submit() } }} />
         <div className="row">

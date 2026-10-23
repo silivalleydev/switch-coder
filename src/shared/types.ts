@@ -109,7 +109,7 @@ export type DbProvider = 'supabase' | 'neon'
 export interface VercelStatus { cliAvailable: boolean; loggedIn: boolean; user?: string; project?: { id: string; orgId: string; name?: string }; db: DbProvider | null; envKeys: string[] }
 
 // ---- all-in-one pipeline (plan → blueprint → build → qa → deploy)
-export type Stage = 'analyze' | 'plan' | 'blueprint' | 'build' | 'qa' | 'deploy' | 'done'
+export type Stage = 'analyze' | 'recon' | 'plan' | 'blueprint' | 'build' | 'qa' | 'deploy' | 'done'
 export interface ProjectAnalysis { overview: string; stack: string; structure: string[]; entryPoints: string[]; conventions: string[]; howToRun: string; risks: string[] }
 export type PipelineMode = 'auto' | 'full' | 'quick'
 export interface Plan { title: string; summary: string; screens: string[]; features: string[]; outOfScope: string[] }
@@ -119,16 +119,35 @@ export interface QaResult { ok: boolean; checks: { name: string; command: string
 export interface PipelineState {
   id: string; root: string; request: string; mode: 'full' | 'quick'; wantDeploy: boolean
   stage: Stage; running: boolean; cancelled: boolean
-  awaiting: null | 'approve-plan' | 'approve-blueprint' | 'vercel-setup' | 'stopped'
+  awaiting: null | 'approve-recon' | 'approve-plan' | 'approve-blueprint' | 'vercel-setup' | 'stopped'
   plan?: Plan; blueprint?: Blueprint; tasks: TaskState[]; currentTask: number
   qa?: QaResult; deployUrl?: string; error?: string
   analysisDoc?: string; analyzedFresh?: boolean
+  reference?: ReferenceInput; recon?: ReconMap; parity?: ParityResult; brandHits?: BrandHit[]; browserQa?: BrowserQaResult
   startedAt: number; updatedAt: number
   modelCalls: number
 }
-export interface Activity { id: string; at: number; kind: 'info' | 'think' | 'file' | 'cmd' | 'error' | 'fix' | 'ok' | 'ask'; text: string; detail?: string }
+export interface Activity { id: string; at: number; kind: 'info' | 'think' | 'file' | 'cmd' | 'error' | 'fix' | 'ok' | 'ask'; text: string; detail?: string; image?: string }
 export interface Snapshot { sha: string; at: number; label: string }
 
 // ---- store billing
 export interface StoreProduct { id: string; title: string; description: string; price: string; plan: 'pro' | 'max'; kind: 'monthly' | 'yearly' | 'lifetime' }
 export interface LicenseState { plan: 'free' | 'pro' | 'max' | 'team'; source: 'none' | 'mas' | 'windows-store' | 'server'; productId?: string; kind?: 'monthly' | 'yearly' | 'lifetime'; since?: number; expiresAt?: number; verified?: boolean }
+
+// ---- reference app ("make me something like X") — functionality & UX only, never code/logo/copy
+export interface ReferenceInput { name: string; url?: string; notes?: string; reviews?: string; appStoreId?: string }
+export interface ReconMap {
+  coreLoop: string
+  screens: { id: string; name: string; purpose: string; components: string[] }[]
+  flows: { goal: string; steps: string[] }[]
+  entities: string[]
+  features: { name: string; priority: 'must' | 'should' | 'could'; area?: string }[]
+  cannotClone: string[]
+  design: { style: string; colors: string[]; typography: string; spacing: string }
+  complaints: { theme: string; count: number; quote?: string }[]
+  angle: string
+  size: 'S' | 'M' | 'L' | 'XL'
+}
+export interface BrandHit { file: string; line: number; kind: 'name' | 'domain' | 'color' | 'path'; match: string; text: string }
+export interface ParityResult { total: number; done: number; percent: number; missing: { name: string; priority: string }[] }
+export interface BrowserQaResult { ok: boolean; url: string; consoleErrors: string[]; pageErrors: string[]; actions: { action: string; target: string; ok: boolean; error?: string }[]; screenshot?: string; title?: string }

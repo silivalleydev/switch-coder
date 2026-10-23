@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { AgentEvent, ChatChunk, ChatMessage, FileNode, LedgerEntry, LocalServerStatus, ModelTarget, ProcInfo, ProcOutput, RouteDecision, Settings, TemplateId, VercelStatus, DbProvider, PipelineState, PipelineMode, Plan, Blueprint, Activity, Snapshot, StoreProduct, LicenseState } from '../shared/types'
+import type { AgentEvent, ChatChunk, ChatMessage, FileNode, LedgerEntry, LocalServerStatus, ModelTarget, ProcInfo, ProcOutput, RouteDecision, Settings, TemplateId, VercelStatus, DbProvider, PipelineState, PipelineMode, Plan, Blueprint, Activity, Snapshot, StoreProduct, LicenseState, ReferenceInput, ReconMap, BrowserQaResult } from '../shared/types'
 
 const api = {
   settings: { get: (): Promise<Settings> => ipcRenderer.invoke('settings:get'), set: (s: Partial<Settings>): Promise<Settings> => ipcRenderer.invoke('settings:set', s) },
@@ -49,8 +49,9 @@ const api = {
     create: (p: { parent: string; name: string; template: TemplateId }): Promise<{ root: string; dev: string | null }> => ipcRenderer.invoke('project:create', p),
   },
   pipeline: {
-    start: (p: { root: string; request: string; mode: PipelineMode; wantDeploy: boolean }): Promise<PipelineState> => ipcRenderer.invoke('pipeline:start', p),
-    approve: (root: string, edits?: { plan?: Plan; blueprint?: Blueprint }): Promise<PipelineState | null> => ipcRenderer.invoke('pipeline:approve', root, edits),
+    start: (p: { root: string; request: string; mode: PipelineMode; wantDeploy: boolean; reference?: ReferenceInput }): Promise<PipelineState> => ipcRenderer.invoke('pipeline:start', p),
+    browserQa: (url: string): Promise<BrowserQaResult> => ipcRenderer.invoke('qa:browser', url),
+    approve: (root: string, edits?: { plan?: Plan; blueprint?: Blueprint; recon?: ReconMap }): Promise<PipelineState | null> => ipcRenderer.invoke('pipeline:approve', root, edits),
     cancel: (root: string): Promise<PipelineState | null> => ipcRenderer.invoke('pipeline:cancel', root),
     skip: (root: string): Promise<PipelineState | null> => ipcRenderer.invoke('pipeline:skip', root),
     current: (root: string): Promise<PipelineState | null> => ipcRenderer.invoke('pipeline:current', root),

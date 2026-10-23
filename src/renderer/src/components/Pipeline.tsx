@@ -2,16 +2,16 @@ import { useEffect, useRef, useState } from 'react'
 import { Check, Circle, Loader2, Square, SkipForward, Play, Undo2, Brain, FileText, TerminalSquare, AlertTriangle, Wrench, CheckCircle2, MessageSquare, Rocket, ChevronDown } from 'lucide-react'
 import { useStore } from '../store'
 import { STAGE_LABEL } from '../lib/humanize'
-import type { Activity, Plan, Blueprint, Stage } from '../../../shared/types'
+import type { Activity, Plan, Blueprint, Stage, ReconMap } from '../../../shared/types'
 
-const ORDER: Stage[] = ['analyze', 'plan', 'blueprint', 'build', 'qa', 'deploy', 'done']
+const ORDER: Stage[] = ['analyze', 'recon', 'plan', 'blueprint', 'build', 'qa', 'deploy', 'done']
 const ICON: Record<Activity['kind'], React.ReactNode> = { info: <MessageSquare size={13} />, think: <Brain size={13} />, file: <FileText size={13} />, cmd: <TerminalSquare size={13} />, error: <AlertTriangle size={13} />, fix: <Wrench size={13} />, ok: <CheckCircle2 size={13} />, ask: <MessageSquare size={13} /> }
 
 function ProgressMap() {
   const { pipeline: p, settings, cancelPipeline, approvePipeline, skipTask } = useStore()
   const lang = settings?.language ?? 'ko'; const ko = lang === 'ko'
   if (!p) return null
-  const stages = ORDER.filter((s) => s !== 'done' && (s !== 'deploy' || p.wantDeploy) && (s !== 'analyze' || p.analysisDoc !== undefined || p.stage === 'analyze') && !(p.mode === 'quick' && (s === 'plan' || s === 'blueprint')))
+  const stages = ORDER.filter((s) => s !== 'done' && (s !== 'deploy' || p.wantDeploy) && (s !== 'analyze' || p.analysisDoc !== undefined || p.stage === 'analyze') && (s !== 'recon' || !!p.reference) && !(p.mode === 'quick' && (s === 'plan' || s === 'blueprint')))
   const idx = ORDER.indexOf(p.stage)
   const cur = p.tasks[p.currentTask]
   const elapsed = Math.max(1, Math.round((Date.now() - p.startedAt) / 60000))
@@ -73,6 +73,29 @@ function BlueprintCard({ bp }: { bp: Blueprint }) {
   )
 }
 
+function ReconCard({ recon }: { recon: ReconMap }) {
+  const { approvePipeline, cancelPipeline, settings, pipeline } = useStore(); const ko = (settings?.language ?? 'ko') === 'ko'
+  const [features, setFeatures] = useState(recon.features)
+  const [angle, setAngle] = useState(recon.angle)
+  const cycle = (i: number) => setFeatures(features.map((f, j) => (j === i ? { ...f, priority: f.priority === 'must' ? 'should' : f.priority === 'should' ? 'could' : 'must' } : f)))
+  return (
+    <div className="card plan">
+      <div className="card-h"><strong>{ko ? `참고 앱 분석: ${pipeline?.reference?.name}` : `Recon: ${pipeline?.reference?.name}`}</strong><span className="muted" style={{ fontSize: 11 }}>{ko ? '규모' : 'size'} {recon.size}</span></div>
+      <p className="muted" style={{ margin: 0, fontSize: 12.5 }}>{recon.coreLoop}</p>
+      <div className="plan-body"><div className="cols">
+        <div><b>{ko ? '화면' : 'Screens'}</b><ul>{recon.screens.map((s) => <li key={s.id}>{s.name} <span className="muted">— {s.purpose}</span></li>)}</ul></div>
+        <div><b>{ko ? '흐름' : 'Flows'}</b><ul>{recon.flows.map((f) => <li key={f.goal}>{f.goal} <span className="muted">({f.steps.length}{ko ? '단계' : ' steps'})</span></li>)}</ul></div>
+      </div></div>
+      <div><b style={{ fontSize: 12 }}>{ko ? '기능 (클릭해서 우선순위 변경)' : 'Features (click to change priority)'}</b>
+        <div className="tasks" style={{ marginTop: 4 }}>{features.map((f, i) => <span key={i} className={'task ' + (f.priority === 'must' ? 'running' : f.priority === 'should' ? '' : 'skipped')} style={{ cursor: 'pointer' }} onClick={() => cycle(i)}>{f.priority} · {f.name}</span>)}</div></div>
+      {recon.complaints.length > 0 && <div><b style={{ fontSize: 12 }}>{ko ? '리뷰에서 본 불만' : 'Complaints from reviews'}</b><ul className="muted" style={{ fontSize: 12, margin: '4px 0 0', paddingLeft: 16 }}>{recon.complaints.map((c) => <li key={c.theme}>{c.theme} ({c.count}){c.quote ? <> — “{c.quote}”</> : null}</li>)}</ul></div>}
+      <div><b style={{ fontSize: 12 }}>{ko ? '우리의 차별점' : 'Our angle'}</b><textarea rows={2} value={angle} onChange={(e) => setAngle(e.target.value)} /></div>
+      {recon.cannotClone.length > 0 && <div className="muted" style={{ fontSize: 11 }}>{ko ? '가져오지 않는 것: ' : 'Not cloned: '}{recon.cannotClone.join(' · ')}</div>}
+      <div className="card-f"><button onClick={() => void cancelPipeline()}>{ko ? '취소' : 'Cancel'}</button><button className="primary" onClick={() => void approvePipeline({ recon: { ...recon, features, angle } })}>{ko ? '좋아요, 기획으로' : 'Approve, plan it'}</button></div>
+    </div>
+  )
+}
+
 function UndoMenu() {
   const { snapshots, refreshSnapshots, restoreSnapshot, settings, pipeline } = useStore(); const ko = (settings?.language ?? 'ko') === 'ko'
   const [open, setOpen] = useState(false)
@@ -97,12 +120,13 @@ export default function Pipeline() {
       <div className="msgs">
         {activities.length === 0 && !p && <div className="muted" style={{ padding: 10, lineHeight: 1.7 }}>{ko ? '만들고 싶은 걸 말하면 기획 → 설계 → 구현 → QA(빌드 검사) → 배포까지 진행합니다. 각 단계가 지금 뭘 하는지 여기에 쉬운 말로 표시되고, 언제든 멈추거나 되돌릴 수 있습니다.' : 'Describe what you want. It goes plan → design → build → QA → deploy, explained in plain language here. Stop or undo any time.'}</div>}
         {activities.map((a) => (
-          <div key={a.id} className={'act ' + a.kind}>{ICON[a.kind]}<div className="t">{a.text}{a.detail && <details><summary>{ko ? '자세히' : 'details'}</summary><pre>{a.detail}</pre></details>}</div></div>
+          <div key={a.id} className={'act ' + a.kind}>{ICON[a.kind]}<div className="t">{a.text}{a.image && <img className="shot" src={a.image} alt="" />}{a.detail && <details><summary>{ko ? '자세히' : 'details'}</summary><pre>{a.detail}</pre></details>}</div></div>
         ))}
+        {p?.awaiting === 'approve-recon' && p.recon && <ReconCard key={p.id + 'recon'} recon={p.recon} />}
         {p?.awaiting === 'approve-plan' && p.plan && <PlanCard key={p.id + 'plan'} plan={p.plan} />}
         {p?.awaiting === 'approve-blueprint' && p.blueprint && <BlueprintCard key={p.id + 'bp'} bp={p.blueprint} />}
         {p?.awaiting === 'vercel-setup' && <div className="card"><div className="card-h"><Rocket size={14} /> <strong>{ko ? 'Vercel 연결 필요' : 'Connect Vercel'}</strong></div><p className="muted">{ko ? '배포 탭에서 로그인과 프로젝트 링크(1~2단계)를 마친 뒤 계속을 누르세요. DB가 필요하면 3단계도.' : 'Finish steps 1-2 (and 3 for a DB) in the Deploy tab, then continue.'}</p><div className="card-f"><button onClick={() => setView('deploy')}>{ko ? '배포 탭 열기' : 'Open Deploy tab'}</button><button className="primary" onClick={() => void approvePipeline()}><Play size={11} /> {ko ? '계속' : 'Continue'}</button></div></div>}
-        {p?.qa && p.stage === 'done' && <div className={'card ' + (p.qa.ok ? 'okb' : 'errb')}><div className="card-h"><strong>QA</strong><span className="muted" style={{ fontSize: 11 }}>{p.qa.checks.map((c) => `${c.name} ${c.ok ? '✓' : '✕'}`).join(' · ') || (ko ? '검사 항목 없음' : 'no checks')}</span></div>{!p.qa.ok && <pre className="muted" style={{ fontSize: 11, maxHeight: 160, overflow: 'auto' }}>{p.qa.checks.filter((c) => !c.ok).map((c) => c.output.slice(-800)).join('\n')}</pre>}</div>}
+        {p?.qa && p.stage === 'done' && <div className={'card ' + (p.qa.ok ? 'okb' : 'errb')}><div className="card-h"><strong>QA</strong><span className="muted" style={{ fontSize: 11 }}>{p.qa.checks.map((c) => `${c.name} ${c.ok ? '✓' : '✕'}`).join(' · ') || (ko ? '검사 항목 없음' : 'no checks')}</span></div>{!p.qa.ok && <pre className="muted" style={{ fontSize: 11, maxHeight: 160, overflow: 'auto' }}>{p.qa.checks.filter((c) => !c.ok).map((c) => c.output.slice(-800)).join('\n')}</pre>}{p.parity && <div style={{ fontSize: 12 }}>{ko ? '참고 앱 기능 커버리지' : 'Feature parity'}: <b>{p.parity.percent}%</b> ({p.parity.done}/{p.parity.total}){p.parity.missing.length > 0 && <span className="muted"> · {ko ? '남은 것' : 'missing'}: {p.parity.missing.slice(0, 5).map((m) => m.name).join(', ')}</span>}</div>}{p.brandHits && <div style={{ fontSize: 12 }} className={p.brandHits.length ? 'err' : ''}>{ko ? '브랜드 검사' : 'Brand sweep'}: {p.brandHits.length ? `${p.brandHits.length} ${ko ? '곳 남음' : 'leftovers'}` : (ko ? '깨끗함' : 'clean')}</div>}</div>}
         <div ref={endRef} />
       </div>
       <div className="pipe-foot"><UndoMenu /></div>

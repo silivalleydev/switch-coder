@@ -66,6 +66,30 @@ scripts/fetch-llama.sh      # llama.cpp b11829 바이너리를 resources/bin/에
 npm run dev
 ```
 
+## 스토어 배포 (결정: Mac App Store + Microsoft Store, PG 직접 연동 없음)
+결제는 스토어가 처리한다. 수수료 Apple 15%(소규모)/30%, MS 12%. 나중에 Paddle을 붙여 직접 배포 채널을 추가할 수 있다.
+
+**샌드박스 대응 (이미 구현)**
+- `node`/`npm`/`npx`는 동봉: Electron 런타임을 `ELECTRON_RUN_AS_NODE`로 쓰고 npm 패키지를 번들. 래퍼는 앱 데이터 폴더 `bin/`에 생성돼 자식 프로세스 PATH 맨 앞에 붙는다. npm 캐시·설정도 앱 컨테이너 안.
+- 되돌리기는 isomorphic-git(순수 JS): 시스템 git 불필요, "Xcode 명령줄 도구 설치" 팝업 없음.
+- 프로젝트 폴더는 보안 북마크로 기억(`bookmarks.json`). 최근 목록 재오픈 시 북마크 재활성화, 실패하면 다시 폴더 선택.
+- Vercel CLI 전역 설정은 `--global-config <userData>/vercel`로 컨테이너 안에.
+- 엔타이틀먼트: `build/entitlements.mas*.plist` (sandbox, network, user-selected rw, bookmarks, JIT).
+
+**Mac App Store**
+```bash
+npm run dist:mas      # universal .pkg (release/)
+```
+사전 준비: App Store Connect에 앱 생성(번들 ID `app.switchcoder.desktop`), 인앱 상품 6개 등록(`app.switchcoder.{pro,max}.{monthly,yearly,lifetime}`), Mac App Store 배포용 프로비저닝 프로필을 `build/SwitchCoder_MAS.provisionprofile`로 두고 `electron-builder.yml`의 `mas.provisioningProfile` 주석 해제, `entitlements.mas.plist`의 `TEAMID`를 팀 ID로. 업로드는 Transporter. 심사 메모: "사용자가 선택한 폴더 안에서 사용자 프로젝트 코드를 실행하는 IDE (CodeRunner 류). 앱 자체 기능은 변경되지 않음."
+
+**Microsoft Store**
+```bash
+npm run dist:appx     # .appx (release/)
+```
+Partner Center에서 앱 예약 후 `electron-builder.yml`의 `appx.identityName`, `publisher` 교체. 결제는 Partner Center 애드온(구독/평생)으로 등록하고 앱 안 "Microsoft Store에서 구매" 링크의 `REPLACE_STORE_ID`를 스토어 ID로. 영수증 검증과 플랜 반영은 라이선스 서버(switchlog-server 확장)에서 처리 — 아직 미구현.
+
+**라이선스 서버 (다음 작업)**: Apple 영수증 / MS 영수증을 검증해 `plan`을 발급하는 API를 switchlog-server에 추가. 현재 Mac 빌드는 StoreKit 거래 성공 시 로컬에서 플랜을 열고 `verified: false`로 표시한다.
+
 ## 배포 빌드
 ```bash
 npm run dist:mac    # dmg + zip (arm64, x64)

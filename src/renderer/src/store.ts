@@ -169,8 +169,10 @@ export const useStore = create<State>((set, get) => ({
     window.sc.onMenu('save', () => void get().saveActive())
   },
   openFolder: async (p) => {
-    const root = p ?? (await window.sc.fs.pickFolder())
+    let root = p ?? (await window.sc.fs.pickFolder())
     if (!root) return
+    // Sandboxed builds: a remembered folder needs its bookmark re-activated; if that fails, ask again.
+    if (p && !(await window.sc.fs.access(p))) { root = await window.sc.fs.pickFolder(); if (!root) return }
     localStorage.setItem('lastFolder', root)
     const recents = [root, ...get().recents.filter((r) => r !== root)].slice(0, 8)
     localStorage.setItem('recents', JSON.stringify(recents))

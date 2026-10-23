@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useStore } from '../store'
 import { t } from '../lib/i18n'
 import { plans } from '../lib/pricing'
-import type { Settings } from '../../../shared/types'
+import type { Settings, StoreProduct, LicenseState } from '../../../shared/types'
 
 export function SettingsModal() {
   const { settings, setSettings, setModal, llama } = useStore()
@@ -75,6 +75,20 @@ export function PlansModal() {
   const { settings, setSettings, setModal } = useStore()
   const lang = settings?.language ?? 'ko'
   const [yearly, setYearly] = useState(false)
+  const [storeKind, setStoreKind] = useState<'mas' | 'windows-store' | 'none'>('none')
+  const [products, setProducts] = useState<StoreProduct[]>([])
+  const [license, setLicense] = useState<LicenseState | null>(null)
+  const [busy, setBusy] = useState<string | null>(null)
+  useEffect(() => { void window.sc.store.kind().then(setStoreKind); void window.sc.store.products().then(setProducts); void window.sc.store.license().then(setLicense); return window.sc.store.onLicense((l) => { setLicense(l); setBusy(null) }) }, [])
+  const ko = lang === 'ko'
+  const buy = async (planId: 'pro' | 'max') => {
+    const kind = yearly ? 'yearly' : 'monthly'
+    const prod = products.find((p) => p.plan === planId && p.kind === kind)
+    if (!prod) return
+    setBusy(prod.id); try { await window.sc.store.purchase(prod.id) } catch { setBusy(null) }
+  }
+  const buyLifetime = async (planId: 'pro' | 'max') => { const prod = products.find((p) => p.plan === planId && p.kind === 'lifetime'); if (!prod) return; setBusy(prod.id); try { await window.sc.store.purchase(prod.id) } catch { setBusy(null) } }
+  const priceOf = (planId: string, kind: string) => products.find((p) => p.plan === planId && p.kind === kind)?.price
   return (
     <div className="overlay" onClick={() => setModal(null)}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -89,11 +103,22 @@ export function PlansModal() {
               <div className="tag">{p.tagline[lang]}</div>
               <ul>{p.features[lang].map((f) => <li key={f}>{f}</li>)}</ul>
               <div className="vs">vs {p.cursorEquivalent}</div>
-              <button className={settings?.plan === p.id ? '' : 'primary'} onClick={() => void setSettings({ plan: p.id })}>{settings?.plan === p.id ? (lang === 'ko' ? '현재 플랜' : 'Current') : (p.id === 'free' ? (lang === 'ko' ? '선택' : 'Choose') : (lang === 'ko' ? '업그레이드' : 'Upgrade'))}</button>
+              {p.id === 'free' || p.id === 'team' ? (
+                <button className={settings?.plan === p.id ? '' : 'primary'} disabled={p.id === 'team'} onClick={() => p.id === 'free' && void setSettings({ plan: 'free' })}>{settings?.plan === p.id ? (ko ? '현재 플랜' : 'Current') : p.id === 'team' ? (ko ? '문의' : 'Contact') : (ko ? '선택' : 'Choose')}</button>
+              ) : storeKind === 'mas' ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <button className={license?.plan === p.id ? '' : 'primary'} disabled={!!busy || license?.plan === p.id || !products.length} onClick={() => void buy(p.id as 'pro' | 'max')}>{license?.plan === p.id ? (ko ? '구독 중' : 'Subscribed') : busy ? '…' : `${ko ? '구독' : 'Subscribe'} ${priceOf(p.id, yearly ? 'yearly' : 'monthly') ?? ''}`}</button>
+                  <button className="sm" disabled={!!busy || license?.kind === 'lifetime' || !products.length} onClick={() => void buyLifetime(p.id as 'pro' | 'max')}>{ko ? '평생' : 'Lifetime'} {priceOf(p.id, 'lifetime') ?? ''}</button>
+                </div>
+              ) : storeKind === 'windows-store' ? (
+                <button className="primary" onClick={() => void window.sc.openExternal('ms-windows-store://pdp/?productid=REPLACE_STORE_ID')}>{ko ? 'Microsoft Store에서 구매' : 'Buy in Microsoft Store'}</button>
+              ) : (
+                <button disabled title={ko ? '스토어 버전에서 구매할 수 있습니다' : 'Available in the store build'}>{ko ? '스토어 버전에서 구매' : 'Buy in store build'}</button>
+              )}
             </div>
           ))}
         </div>
-        <p className="muted" style={{ fontSize: 11, marginTop: 14 }}>{lang === 'ko' ? '결제 연동(Stripe / App Store)은 아직 연결되지 않았습니다. 플랜 선택은 로컬 설정에만 저장됩니다.' : 'Billing (Stripe / App Store) is not wired yet; plan choice is stored locally.'}</p>
+        <p className="muted" style={{ fontSize: 11, marginTop: 14 }}>{storeKind === 'mas' ? (<>{ko ? '결제는 Apple App Store를 통해 처리됩니다. ' : 'Billing is handled by the Apple App Store. '}<a href="#" onClick={(e) => { e.preventDefault(); void window.sc.store.restore() }}>{ko ? '구매 복원' : 'Restore purchases'}</a></>) : storeKind === 'windows-store' ? (ko ? '결제는 Microsoft Store를 통해 처리됩니다.' : 'Billing is handled by the Microsoft Store.') : (ko ? '이 빌드는 스토어 외 배포용입니다. 결제는 App Store / Microsoft Store 버전에서 가능합니다.' : 'This build is distributed outside the stores; purchases are available in the store builds.')}</p>
       </div>
     </div>
   )

@@ -128,3 +128,7 @@ export interface PipelineState {
 }
 export interface Activity { id: string; at: number; kind: 'info' | 'think' | 'file' | 'cmd' | 'error' | 'fix' | 'ok' | 'ask'; text: string; detail?: string }
 export interface Snapshot { sha: string; at: number; label: string }
+
+// ---- store billing
+export interface StoreProduct { id: string; title: string; description: string; price: string; plan: 'pro' | 'max'; kind: 'monthly' | 'yearly' | 'lifetime' }
+export interface LicenseState { plan: 'free' | 'pro' | 'max' | 'team'; source: 'none' | 'mas' | 'windows-store' | 'server'; productId?: string; kind?: 'monthly' | 'yearly' | 'lifetime'; since?: number; expiresAt?: number; verified?: boolean }

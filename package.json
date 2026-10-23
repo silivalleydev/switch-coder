@@ -12,7 +12,10 @@
     "dist": "electron-vite build && electron-builder",
     "dist:mac": "electron-vite build && electron-builder --mac",
     "dist:win": "electron-vite build && electron-builder --win",
-    "dist:all": "electron-vite build && electron-builder --mac --win"
+    "dist:all": "electron-vite build && electron-builder --mac --win",
+    "dist:mas": "electron-vite build && electron-builder --mac mas --universal",
+    "dist:appx": "electron-vite build && electron-builder --win appx",
+    "dist:stores": "electron-vite build && electron-builder --mac mas --universal --win appx"
   },
   "keywords": [],
   "author": "Switch Labs",
@@ -30,8 +33,10 @@
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
+    "isomorphic-git": "^1.44.3",
     "lucide-react": "^1.61.0",
     "monaco-editor": "^0.57.0",
+    "npm": "^11.21.1",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "vercel": "^65.2.0",

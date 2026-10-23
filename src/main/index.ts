@@ -11,6 +11,7 @@ import { runAgent, cancelAgent, type AgentMsg } from './agent'
 import * as procs from './procs'
 import * as vercel from './vercel'
 import * as pipeline from './pipeline'
+import * as iap from './iap'
 import * as snaps from './snapshots'
 import type { PipelineMode, Plan, Blueprint } from '../shared/types'
 import type { DbProvider } from '../shared/types'
@@ -52,7 +53,9 @@ app.whenReady().then(() => {
     { label: 'File', submenu: [{ label: 'Open Folder…', accelerator: 'CmdOrCtrl+O', click: () => win?.webContents.send('menu:open-folder') }, { label: 'Save', accelerator: 'CmdOrCtrl+S', click: () => win?.webContents.send('menu:save') }] },
     { role: 'editMenu' }, { role: 'viewMenu' }, { role: 'windowMenu' },
   ]))
+  if (!app.isPackaged && process.env.SC_SELFTEST) { void procs.runCommand('echo PATH0=$(echo $PATH | cut -d: -f1) && node --version && npm --version && npx --version && which node npm', app.getPath('temp'), 60_000).then((r) => { console.log('[selftest]\n' + r.output + '[exit ' + r.code + ']'); if (process.env.SC_SELFTEST === 'exit') app.quit() }) }
   createWindow()
+  iap.listen((lic) => { saveSettings({ plan: lic.plan }); win?.webContents.send('store:license', lic) })
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow() })
 })
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit() })
@@ -144,6 +147,12 @@ ipcMain.handle('vercel:link', (e, root: string, name: string) => vercel.link(roo
 ipcMain.handle('vercel:addDb', (e, root: string, provider: DbProvider) => vercel.addDb(root, provider, vtoken(), vlog(e)))
 ipcMain.handle('vercel:envPull', (e, root: string) => vercel.envPull(root, vtoken(), vlog(e)))
 ipcMain.handle('vercel:deploy', (e, root: string, prod: boolean) => vercel.deploy(root, prod, vtoken(), vlog(e)))
+// ---- store billing (Mac App Store IAP; Microsoft Store add-ons via Store page)
+ipcMain.handle('store:kind', () => iap.storeKind())
+ipcMain.handle('store:license', () => iap.loadLicense())
+ipcMain.handle('store:products', () => iap.products())
+ipcMain.handle('store:purchase', (_e, id: string) => iap.purchase(id))
+ipcMain.handle('store:restore', () => iap.restore())
 ipcMain.handle('dialog:message', (_e, msg: string) => dialog.showMessageBox({ message: msg }))
 
 // ---- settings
@@ -155,6 +164,7 @@ ipcMain.handle('shell:open', (_e, url: string) => shell.openExternal(url))
 
 // ---- fs
 ipcMain.handle('fs:pickFolder', () => (win ? fsx.pickFolder(win) : null))
+ipcMain.handle('fs:access', (_e, p: string) => fsx.accessFolder(p))
 ipcMain.handle('fs:tree', (_e, root: string) => fsx.readTree(root))
 ipcMain.handle('fs:read', (_e, p: string) => fsx.readFile(p))
 ipcMain.handle('fs:write', (_e, p: string, c: string) => fsx.writeFile(p, c))

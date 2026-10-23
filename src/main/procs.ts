@@ -1,18 +1,19 @@
 import { spawn, ChildProcess } from 'child_process'
 import { randomUUID } from 'crypto'
 import type { ProcInfo, ProcOutput } from '../shared/types'
+import { toolchainEnv } from './toolchain'
 
 const URL_RE = /(https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0)(?::\d+)?[^\s"'`)]*)/
 const DENY = [/\brm\s+-rf\s+\/(\s|$)/, /\bsudo\b/, /\bmkfs\b/, /\bdd\s+if=/, /:\(\)\s*\{/, />\s*\/dev\/sd/, /\bshutdown\b|\breboot\b/, /\bchmod\s+-R\s+777\s+\//]
 export function isDenied(cmd: string): string | null { for (const r of DENY) if (r.test(cmd)) return `Blocked dangerous command: ${cmd}`; return null }
 
-const shell = process.platform === 'win32' ? { cmd: 'cmd.exe', args: (c: string) => ['/d', '/s', '/c', c] } : { cmd: '/bin/zsh', args: (c: string) => ['-lc', c] }
-const env = { ...process.env, CI: '1', FORCE_COLOR: '0', NO_COLOR: '1', BROWSER: 'none', npm_config_yes: 'true' }
+const shell = process.platform === 'win32' ? { cmd: 'cmd.exe', args: (c: string) => ['/d', '/s', '/c', c] } : { cmd: '/bin/zsh', args: (c: string) => ['-c', c] }
+const env = () => ({ ...process.env, ...toolchainEnv(), CI: '1', FORCE_COLOR: '0', NO_COLOR: '1', BROWSER: 'none' })
 
 /** Foreground command: waits (with timeout), returns combined output. */
 export function runCommand(command: string, cwd: string, timeoutMs = 180_000, onChunk?: (s: string) => void): Promise<{ code: number | null; output: string; timedOut: boolean }> {
   return new Promise((resolve) => {
-    const p = spawn(shell.cmd, shell.args(command), { cwd, env, stdio: ['ignore', 'pipe', 'pipe'] })
+    const p = spawn(shell.cmd, shell.args(command), { cwd, env: env(), stdio: ['ignore', 'pipe', 'pipe'] })
     let out = ''; let timedOut = false
     const push = (d: Buffer) => { const s = d.toString(); out += s; onChunk?.(s) }
     p.stdout.on('data', push); p.stderr.on('data', push)
@@ -31,7 +32,7 @@ export function startBackground(command: string, cwd: string): Promise<ProcInfo>
   // one dev server per command string: restart if already running
   for (const [id, p] of procs) if (p.info.command === command && p.info.cwd === cwd) stopProcess(id)
   const id = randomUUID().slice(0, 8)
-  const child = spawn(shell.cmd, shell.args(command), { cwd, env, stdio: ['ignore', 'pipe', 'pipe'], detached: process.platform !== 'win32' })
+  const child = spawn(shell.cmd, shell.args(command), { cwd, env: env(), stdio: ['ignore', 'pipe', 'pipe'], detached: process.platform !== 'win32' })
   const info: ProcInfo = { id, command, pid: child.pid, cwd, running: true }
   const rec = { info, child, log: '' }
   procs.set(id, rec)

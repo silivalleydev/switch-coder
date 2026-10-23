@@ -2,12 +2,31 @@ import { dialog, BrowserWindow } from 'electron'
 import { promises as fs } from 'fs'
 import { join, basename, relative } from 'path'
 import type { FileNode } from '../shared/types'
+import { app } from 'electron'
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
+
+// Sandbox (Mac App Store): remember security-scoped bookmarks so recent projects reopen without a dialog.
+const isMas = process.mas === true
+const bookmarksFile = () => join(app.getPath('userData'), 'bookmarks.json')
+function loadBookmarks(): Record<string, string> { try { return JSON.parse(readFileSync(bookmarksFile(), 'utf8')) } catch { return {} } }
+function saveBookmark(path: string, bookmark: string) { const b = loadBookmarks(); b[path] = bookmark; mkdirSync(app.getPath('userData'), { recursive: true }); writeFileSync(bookmarksFile(), JSON.stringify(b)) }
+const active = new Map<string, () => void>()
+/** Start (or re-start) sandbox access to a previously picked folder. No-op outside the App Store build. */
+export function accessFolder(path: string): boolean {
+  if (!isMas) return true
+  if (active.has(path)) return true
+  const bm = loadBookmarks()[path]; if (!bm) return false
+  try { const stop = app.startAccessingSecurityScopedResource(bm) as unknown as () => void; active.set(path, stop); return true } catch { return false }
+}
 
 const IGNORE = new Set(['node_modules', '.git', 'dist', 'out', 'release', 'build', '.next', 'target', '__pycache__', '.DS_Store', '.venv', 'venv'])
 
 export async function pickFolder(win: BrowserWindow): Promise<string | null> {
-  const r = await dialog.showOpenDialog(win, { properties: ['openDirectory', 'createDirectory'] })
-  return r.canceled ? null : r.filePaths[0]
+  const r = await dialog.showOpenDialog(win, { properties: ['openDirectory', 'createDirectory'], securityScopedBookmarks: isMas })
+  if (r.canceled || !r.filePaths[0]) return null
+  const path = r.filePaths[0]
+  if (isMas && r.bookmarks?.[0]) { saveBookmark(path, r.bookmarks[0]); accessFolder(path) }
+  return path
 }
 
 export async function readTree(root: string, depth = 6): Promise<FileNode> {

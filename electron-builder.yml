@@ -10,6 +10,7 @@ files:
 asarUnpack:
   - resources/**
   - node_modules/vercel/**
+  - node_modules/npm/**
 mac:
   category: public.app-category.developer-tools
   target:
@@ -20,10 +21,30 @@ mac:
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
   notarize: false
+mas:
+  category: public.app-category.developer-tools
+  entitlements: build/entitlements.mas.plist
+  entitlementsInherit: build/entitlements.mas.inherit.plist
+  entitlementsLoginHelper: build/entitlements.mas.loginhelper.plist
+  hardenedRuntime: false
+  # provisioningProfile: build/SwitchCoder_MAS.provisionprofile   # from developer.apple.com (Mac App Store distribution)
+  extendInfo:
+    LSApplicationCategoryType: public.app-category.developer-tools
+    ITSAppUsesNonExemptEncryption: false
 win:
   target:
     - { target: nsis, arch: [x64, arm64] }
     - { target: portable, arch: [x64] }
+    - { target: appx, arch: [x64, arm64] }
+appx:
+  applicationId: SwitchCoder
+  identityName: REPLACE.WITH.PARTNER.CENTER.IDENTITY   # Partner Center → Product identity → Package/Identity/Name
+  publisher: CN=REPLACE-WITH-PARTNER-CENTER-PUBLISHER-GUID
+  publisherDisplayName: Switch Labs
+  displayName: SwitchCoder
+  backgroundColor: '#0C2135'
+  languages: [ko-KR, en-US]
+  showNameOnTiles: true
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true

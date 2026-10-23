@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { AgentEvent, ChatChunk, ChatMessage, FileNode, LedgerEntry, LocalServerStatus, ModelTarget, ProcInfo, ProcOutput, RouteDecision, Settings, TemplateId, VercelStatus, DbProvider, PipelineState, PipelineMode, Plan, Blueprint, Activity, Snapshot } from '../shared/types'
+import type { AgentEvent, ChatChunk, ChatMessage, FileNode, LedgerEntry, LocalServerStatus, ModelTarget, ProcInfo, ProcOutput, RouteDecision, Settings, TemplateId, VercelStatus, DbProvider, PipelineState, PipelineMode, Plan, Blueprint, Activity, Snapshot, StoreProduct, LicenseState } from '../shared/types'
 
 const api = {
   settings: { get: (): Promise<Settings> => ipcRenderer.invoke('settings:get'), set: (s: Partial<Settings>): Promise<Settings> => ipcRenderer.invoke('settings:set', s) },
@@ -8,6 +8,7 @@ const api = {
   openExternal: (url: string) => ipcRenderer.invoke('shell:open', url),
   fs: {
     pickFolder: (): Promise<string | null> => ipcRenderer.invoke('fs:pickFolder'),
+    access: (p: string): Promise<boolean> => ipcRenderer.invoke('fs:access', p),
     tree: (root: string): Promise<FileNode> => ipcRenderer.invoke('fs:tree', root),
     read: (p: string): Promise<string> => ipcRenderer.invoke('fs:read', p),
     write: (p: string, c: string): Promise<void> => ipcRenderer.invoke('fs:write', p, c),
@@ -61,6 +62,14 @@ const api = {
     list: (root: string): Promise<Snapshot[]> => ipcRenderer.invoke('snapshots:list', root),
     restore: (root: string, sha: string): Promise<boolean> => ipcRenderer.invoke('snapshots:restore', root, sha),
     take: (root: string, label: string): Promise<string | null> => ipcRenderer.invoke('snapshots:take', root, label),
+  },
+  store: {
+    kind: (): Promise<'mas' | 'windows-store' | 'none'> => ipcRenderer.invoke('store:kind'),
+    license: (): Promise<LicenseState> => ipcRenderer.invoke('store:license'),
+    products: (): Promise<StoreProduct[]> => ipcRenderer.invoke('store:products'),
+    purchase: (id: string): Promise<boolean> => ipcRenderer.invoke('store:purchase', id),
+    restore: () => ipcRenderer.invoke('store:restore'),
+    onLicense: (fn: (l: LicenseState) => void) => { const h = (_: unknown, l: LicenseState) => fn(l); ipcRenderer.on('store:license', h); return () => { ipcRenderer.off('store:license', h) } },
   },
   vercel: {
     status: (root: string | null): Promise<VercelStatus> => ipcRenderer.invoke('vercel:status', root),

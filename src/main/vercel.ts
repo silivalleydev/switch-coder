@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'fs'
 import { join } from 'path'
 import { homedir } from 'os'
 import { app, shell } from 'electron'
+import { toolchainEnv } from './toolchain'
 import type { VercelStatus, DbProvider } from '../shared/types'
 
 /** Path to the Vercel CLI entry: bundled node_modules in dev, unpacked in the packaged app. */
@@ -13,7 +14,8 @@ function cliPath(): string {
   const unpacked = join(process.resourcesPath, 'app.asar.unpacked', rel)
   return unpacked
 }
-function globalAuthPath(): string {
+const globalConfigDir = () => join(app.getPath('userData'), 'vercel')
+function legacyAuthPath(): string {
   if (process.platform === 'darwin') return join(homedir(), 'Library', 'Application Support', 'com.vercel.cli', 'auth.json')
   if (process.platform === 'win32') return join(process.env.APPDATA ?? join(homedir(), 'AppData', 'Roaming'), 'com.vercel.cli', 'auth.json')
   return join(process.env.XDG_DATA_HOME ?? join(homedir(), '.local', 'share'), 'com.vercel.cli', 'auth.json')
@@ -25,8 +27,8 @@ const URL_RE = /https?:\/\/[^\s"'`)\]]+/g
 /** Run the Vercel CLI with Node (so we do not depend on a global install). */
 export function vc(args: string[], cwd: string, opts: { token?: string; interactive?: boolean; onOutput?: Out; timeoutMs?: number } = {}): Promise<{ code: number | null; output: string; stdout: string }> {
   return new Promise((resolve) => {
-    const full = [cliPath(), ...args, ...(opts.token ? ['--token', opts.token] : []), ...(opts.interactive ? [] : ['--non-interactive']), '--no-color']
-    const env = { ...process.env, FORCE_COLOR: '0', NO_COLOR: '1', ...(opts.interactive ? {} : { CI: '1' }) }
+    const full = [cliPath(), ...args, '--global-config', globalConfigDir(), ...(opts.token ? ['--token', opts.token] : []), ...(opts.interactive ? [] : ['--non-interactive']), '--no-color']
+    const env = { ...process.env, ...toolchainEnv(), FORCE_COLOR: '0', NO_COLOR: '1', ...(opts.interactive ? {} : { CI: '1' }) }
     const p = spawn(process.execPath, full, { cwd, env: { ...env, ELECTRON_RUN_AS_NODE: '1' }, stdio: ['ignore', 'pipe', 'pipe'] })
     let out = ''; let so = ''
     const push = (d: Buffer) => { const s = d.toString(); out += s; opts.onOutput?.(s) }
@@ -38,7 +40,7 @@ export function vc(args: string[], cwd: string, opts: { token?: string; interact
 }
 
 export async function status(root: string | null, token?: string): Promise<VercelStatus> {
-  const loggedIn = !!token || existsSync(globalAuthPath())
+  const loggedIn = !!token || existsSync(join(globalConfigDir(), 'auth.json')) || (process.mas !== true && existsSync(legacyAuthPath()))
   let user: string | undefined
   if (loggedIn) { const r = await vc(['whoami'], root ?? homedir(), { token, timeoutMs: 20_000 }); if (r.code === 0) user = r.stdout.trim().split('\n').filter((l) => l && !/^Vercel CLI/.test(l)).pop()?.trim() }
   let project: VercelStatus['project']

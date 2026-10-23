@@ -86,3 +86,19 @@ export interface RouteDecision {
   score: number
   reasons: string[]
 }
+
+// ---- vibe-coding agent
+export type AgentEvent =
+  | { runId: string; type: 'status'; text: string }
+  | { runId: string; type: 'reasoning'; text: string }
+  | { runId: string; type: 'assistant'; text: string }
+  | { runId: string; type: 'tool_call'; callId: string; name: string; args: Record<string, unknown> }
+  | { runId: string; type: 'tool_result'; callId: string; name: string; ok: boolean; output: string }
+  | { runId: string; type: 'done'; summary: string; iterations: number }
+  | { runId: string; type: 'error'; message: string }
+
+export interface ProcInfo { id: string; command: string; pid?: number; cwd: string; running: boolean; url?: string }
+export type ProcOutput = { id: string; chunk: string; url?: string; exited?: number | null }
+
+export type TemplateId = 'vite-react' | 'next' | 'expo' | 'python' | 'empty'
+export interface Template { id: TemplateId; name: string; desc: { ko: string; en: string }; command?: string; dev?: string }

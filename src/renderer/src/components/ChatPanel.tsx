@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Send, Square, Trash2, ListChecks, Cpu, Cloud, Lock, Shuffle } from 'lucide-react'
-import { useStore, rel, findFile, type UiMessage } from '../store'
+import { Send, Square, Trash2, ListChecks, Cpu, Cloud, Lock, Shuffle, Hammer, MessageSquare, FileText, Terminal as TermIcon, FolderTree, CheckCircle2 } from 'lucide-react'
+import { useStore, rel, findFile, type UiMessage, type AgentItem } from '../store'
 import { t } from '../lib/i18n'
 import { parseBlocks, safeJsonArray } from '../lib/code'
 import type { RouteDecision, RouteMode } from '../../../shared/types'
@@ -44,8 +44,40 @@ function Decision({ d, target }: { d?: RouteDecision; target?: UiMessage['target
   return <div className="meta"><span className={'pill ' + cls}>{target.kind === 'local' ? <Cpu size={11} /> : <Cloud size={11} />} {target.label}</span><span title={d.reasons.join(', ')}>{d.score}/100 · {d.reasons[0]}</span></div>
 }
 
+function ToolCard({ it }: { it: Extract<AgentItem, { kind: 'tool' }> }) {
+  const [open, setOpen] = useState(false)
+  const icon = it.name === 'write_file' ? <FileText size={12} /> : it.name === 'run_command' ? <TermIcon size={12} /> : it.name === 'list_files' ? <FolderTree size={12} /> : it.name === 'finish' ? <CheckCircle2 size={12} /> : <FileText size={12} />
+  const arg = it.name === 'run_command' ? String(it.args.command ?? '') : String(it.args.path ?? it.args.summary ?? '')
+  return (
+    <div className="tool">
+      <div className="head" onClick={() => setOpen(!open)}>{icon}<span className="name">{it.name}</span><span className="arg">{arg}</span><span className={'st ' + (it.ok === undefined ? '' : it.ok ? 'ok' : 'fail')} /></div>
+      {open && <pre>{it.name === 'write_file' ? String(it.args.content ?? '') + '\n\n' : ''}{it.output ?? '…'}</pre>}
+    </div>
+  )
+}
+
+function AgentTimeline() {
+  const { agentItems, settings, agentRunning } = useStore()
+  const lang = settings?.language ?? 'ko'
+  const endRef = useRef<HTMLDivElement>(null)
+  useEffect(() => { endRef.current?.scrollIntoView({ block: 'end' }) }, [agentItems])
+  return (
+    <div className="msgs">
+      {agentItems.length === 0 && <div className="muted" style={{ padding: 10, lineHeight: 1.6 }}>{t(lang, 'agentIdle')}</div>}
+      {agentItems.map((it) => {
+        if (it.kind === 'tool') return <ToolCard key={it.id} it={it} />
+        if (it.kind === 'reasoning') return <details key={it.id} className="thinking"><summary>reasoning</summary><div>{it.text}</div></details>
+        if (it.kind === 'done') return <div key={it.id} className="agent-item done">✓ {it.text}<div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{it.iterations} steps</div></div>
+        return <div key={it.id} className={'agent-item ' + it.kind}>{it.text}</div>
+      })}
+      {agentRunning && <div className="muted" style={{ fontSize: 12 }}>▍ working…</div>}
+      <div ref={endRef} />
+    </div>
+  )
+}
+
 export default function ChatPanel() {
-  const { messages, send, cancel, clearChat, settings, setSettings, steps, setSteps, llama, tabs, active, tree } = useStore()
+  const { messages, send, cancel, clearChat, settings, setSettings, steps, setSteps, llama, tabs, active, tree, chatMode, setChatMode, startAgent, cancelAgent, clearAgent, agentRunning } = useStore()
   const lang = settings?.language ?? 'ko'
   const [text, setText] = useState('')
   const [preview, setPreview] = useState<RouteDecision | null>(null)
@@ -69,7 +101,7 @@ export default function ChatPanel() {
     if (arr) setSteps(arr.map((s) => ({ title: s.title, detail: s.detail, files: s.files ?? [], status: 'todo' })))
   }, [messages, setSteps])
 
-  const submit = (opts?: { mode?: 'chat' | 'plan'; forceTarget?: 'local' | 'cloud' }) => { if (!text.trim() || streaming) return; void send(text, opts); setText('') }
+  const submit = (opts?: { mode?: 'chat' | 'plan'; forceTarget?: 'local' | 'cloud' }) => { if (!text.trim()) return; if (chatMode === 'build') { if (agentRunning) return; void startAgent(text); setText(''); return } if (streaming) return; void send(text, opts); setText('') }
   const runStep = (i: number) => {
     const s = steps[i]
     setSteps(steps.map((x, j) => (j === i ? { ...x, status: 'running' } : x)))
@@ -81,16 +113,17 @@ export default function ChatPanel() {
   return (
     <div className="chat">
       <div className="head">
-        <span className="title">{t(lang, 'chat')}</span>
+        <div className="seg"><button className={chatMode === 'build' ? 'on' : ''} onClick={() => setChatMode('build')}><Hammer size={11} /> {t(lang, 'build')}</button><button className={chatMode === 'chat' ? 'on' : ''} onClick={() => setChatMode('chat')}><MessageSquare size={11} /> {t(lang, 'chatOnly')}</button></div>
+        <span className="spacer" style={{ flex: 1 }} />
         <div className="seg" title="⌘/">
           {byok && <button className={mode === 'auto' ? 'on' : ''} onClick={() => setMode('auto')}><Shuffle size={11} /> {t(lang, 'auto')}</button>}
           <button className={'local' + (mode === 'local' || (!byok && mode !== 'privacy-lock') ? ' on' : '')} onClick={() => setMode('local')}><Cpu size={11} /> {t(lang, 'local')}</button>
           {byok && <button className={'cloud' + (mode === 'cloud' ? ' on' : '')} onClick={() => setMode('cloud')}><Cloud size={11} /> {t(lang, 'cloud')}</button>}
           <button className={'privacy' + (mode === 'privacy-lock' ? ' on' : '')} onClick={() => setMode('privacy-lock')} title={t(lang, 'privacy')}><Lock size={11} /></button>
         </div>
-        <button className="ghost sm" onClick={clearChat} title="Clear"><Trash2 size={13} /></button>
+        <button className="ghost sm" onClick={() => (chatMode === 'build' ? void clearAgent() : clearChat())} title="Clear"><Trash2 size={13} /></button>
       </div>
-      <div className="msgs">
+      {chatMode === 'build' ? <AgentTimeline /> : <div className="msgs">
         {messages.length === 0 && <div className="muted" style={{ padding: 10, lineHeight: 1.6 }}>{t(lang, 'emptyChat')}<br /><br />{t(lang, 'planHint')}</div>}
         {messages.map((m) => (
           <div key={m.id} className={'msg ' + m.role}>
@@ -102,8 +135,8 @@ export default function ChatPanel() {
           </div>
         ))}
         <div ref={endRef} />
-      </div>
-      {steps.length > 0 && (
+      </div>}
+      {chatMode === 'chat' && steps.length > 0 && (
         <div className="steps">
           <div className="hint"><ListChecks size={12} /> {t(lang, 'plan')} · {steps.filter((s) => s.status === 'done').length}/{steps.length}</div>
           {steps.map((s, i) => (
@@ -112,14 +145,16 @@ export default function ChatPanel() {
         </div>
       )}
       <div className="composer">
-        <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder={t(lang, 'placeholder')}
+        <textarea value={text} onChange={(e) => setText(e.target.value)} placeholder={chatMode === 'build' ? t(lang, 'buildPlaceholder') : t(lang, 'placeholder')}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); submit() } }} />
         <div className="row">
           {preview && byok && <span className="route-preview">{t(lang, 'routeTo')}: <span className={'pill ' + preview.target}>{preview.target === 'local' ? 'Flint' : t(lang, 'cloud')}</span> {preview.score}/100 <span className="muted">· {preview.reasons[0]}</span></span>}
           <span className="spacer" />
           {active && <span className="muted" style={{ fontSize: 11 }}>@ {tabs.find((x) => x.path === active)?.name}</span>}
-          <button className="sm" title={t(lang, 'planHint')} disabled={streaming || !text.trim()} onClick={() => submit({ mode: 'plan' })}><ListChecks size={12} /> {t(lang, 'plan')}</button>
-          {streaming ? <button className="sm" onClick={cancel}><Square size={12} /> {t(lang, 'stop')}</button> : <button className="primary sm" disabled={!text.trim() || (mode !== 'cloud' && llama.state !== 'running' && preview?.target !== 'cloud')} onClick={() => submit()}><Send size={12} /> {t(lang, 'send')}</button>}
+          {chatMode === 'chat' && <button className="sm" title={t(lang, 'planHint')} disabled={streaming || !text.trim()} onClick={() => submit({ mode: 'plan' })}><ListChecks size={12} /> {t(lang, 'plan')}</button>}
+          {chatMode === 'build'
+            ? (agentRunning ? <button className="sm" onClick={cancelAgent}><Square size={12} /> {t(lang, 'stop')}</button> : <button className="primary sm" disabled={!text.trim() || llama.state !== 'running'} onClick={() => submit()}><Hammer size={12} /> {t(lang, 'build')}</button>)
+            : (streaming ? <button className="sm" onClick={cancel}><Square size={12} /> {t(lang, 'stop')}</button> : <button className="primary sm" disabled={!text.trim() || (mode !== 'cloud' && llama.state !== 'running' && preview?.target !== 'cloud')} onClick={() => submit()}><Send size={12} /> {t(lang, 'send')}</button>)}
         </div>
       </div>
     </div>

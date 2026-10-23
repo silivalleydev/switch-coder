@@ -116,12 +116,12 @@ table.ledger { width: 100%; border-collapse: collapse; font-size: 12px; } table.
 .start { height: 100%; overflow: auto; padding: 48px 40px; display: flex; flex-direction: column; align-items: center; gap: 28px; }
 .start-hero { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .brand.big { font-size: 28px; font-weight: 800; display: flex; align-items: center; gap: 10px; } .brand.big .dot { width: 14px; height: 14px; }
-.start-cols { display: grid; grid-template-columns: 1fr 1.3fr; gap: 20px; width: min(1040px, 100%); }
-.start-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
+.start-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 20px; width: min(1040px, 100%); }
+.start-card { min-width: 0; background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
 .start-card h2 { margin: 0 0 14px; font-size: 15px; display: flex; align-items: center; gap: 8px; }
 .start-card h3 { margin: 18px 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--fg2); display: flex; align-items: center; gap: 6px; }
 .recents { display: flex; flex-direction: column; gap: 4px; }
-.recent { display: flex; flex-direction: column; padding: 8px 10px; border-radius: 8px; cursor: pointer; } .recent:hover { background: var(--bg3); } .recent span { font-size: 11px; font-family: var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.recent { display: flex; flex-direction: column; min-width: 0; padding: 8px 10px; border-radius: 8px; cursor: pointer; } .recent:hover { background: var(--bg3); } .recent span { font-size: 11px; font-family: var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tpl { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
 .tpl-item { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; } .tpl-item span { font-size: 11px; color: var(--fg3); } .tpl-item.on { border-color: var(--accent); background: rgba(124,92,255,.1); }
 .mini-term { margin-top: 10px; max-height: 160px; overflow: auto; background: #0a0c10; border-radius: 8px; padding: 8px; font-family: var(--mono); font-size: 11px; white-space: pre-wrap; color: #c9d1d9; }
@@ -169,4 +169,4 @@ table.ledger { width: 100%; border-collapse: collapse; font-size: 12px; } table.
 .undo-item { display: flex; justify-content: space-between; gap: 8px; padding: 6px 8px; border-radius: 6px; cursor: pointer; font-size: 12px; } .undo-item:hover { background: var(--bg3); }
 .pipe-opts { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--fg2); }
 
-.start-hero .wordmark { height: 72px; width: auto; }
+.start-hero .wordmark { height: 72px; width: auto; max-width: 90vw; background: transparent; }

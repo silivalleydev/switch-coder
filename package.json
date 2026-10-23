@@ -1,7 +1,7 @@
 {
   "name": "switchcoder",
   "version": "0.1.0",
-  "description": "Switch Coder - local-first AI code editor",
+  "description": "SwitchCoder - local-first AI code editor",
   "main": "out/main/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",

@@ -1,5 +1,5 @@
 appId: app.switchcoder.desktop
-productName: Switch Coder
+productName: SwitchCoder
 copyright: Copyright © 2026 Switch Labs
 directories:
   output: release

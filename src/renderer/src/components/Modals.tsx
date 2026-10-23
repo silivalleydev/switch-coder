@@ -36,7 +36,7 @@ export function SettingsModal() {
         <h3>BYOK — 내 API 키 연결 (선택)</h3>
         <div className="form">
           <label>클라우드 사용</label><input type="checkbox" checked={s.byokEnabled} onChange={(e) => u({ byokEnabled: e.target.checked, routeMode: e.target.checked ? 'auto' : 'local' })} />
-          <div className="help">기본은 100% 로컬. 켜면 내 Anthropic/OpenAI 호환 키로 직접 호출하며 Switch Coder은 한 푼도 받지 않습니다.</div>
+          <div className="help">기본은 100% 로컬. 켜면 내 Anthropic/OpenAI 호환 키로 직접 호출하며 SwitchCoder은 한 푼도 받지 않습니다.</div>
         </div>
         {s.byokEnabled && (<>
         <h3>Switch Router</h3>

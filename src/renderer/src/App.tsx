@@ -8,6 +8,7 @@ import StatusBar from './components/StatusBar'
 import QuickOpen from './components/QuickOpen'
 import { SettingsModal, PlansModal, LedgerModal } from './components/Modals'
 import { t } from './lib/i18n'
+import symbol from './assets/symbol.png'
 
 export default function App() {
   const { init, settings, modal, openFolder, setSettings, projectRoot, closeProject } = useStore()
@@ -26,7 +27,7 @@ export default function App() {
   return (
     <div className="app">
       <div className="titlebar">
-        <span className="brand"><span className="dot" />Switch Coder</span>
+        <span className="brand"><img className="logo" src={symbol} alt="" /><span className="word">SwitchCoder</span></span>
         {projectRoot && <><button className="ghost sm" onClick={() => void openFolder()}><FolderOpen size={13} /> {projectRoot.split(/[\\/]/).pop()}</button><button className="ghost sm" title={t(lang, 'closeProject')} onClick={closeProject}><X size={12} /></button></>}
         <span className="spacer" />
         <span className={'pill ' + (settings?.routeMode === 'privacy-lock' ? 'privacy' : 'local')} title="⌘/">{settings?.byokEnabled ? <Shuffle size={11} /> : <Cpu size={11} />} {settings?.byokEnabled ? settings.routeMode : settings?.routeMode === 'privacy-lock' ? 'privacy lock' : '100% local'}</span>

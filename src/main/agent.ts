@@ -19,7 +19,7 @@ const TOOLS = [
   { type: 'function', function: { name: 'finish', description: 'Call when the task is complete. Summarize what was built and how to run it.', parameters: { type: 'object', properties: { summary: { type: 'string' } }, required: ['summary'] } } },
 ]
 
-const SYSTEM = (root: string, lang: 'ko' | 'en') => `You are Switch Coder, an autonomous vibe-coding agent working inside the project folder "${root}". The user describes what they want; you build it by calling tools. Reply to the user in ${lang === 'ko' ? 'Korean' : 'English'}.
+const SYSTEM = (root: string, lang: 'ko' | 'en') => `You are SwitchCoder, an autonomous vibe-coding agent working inside the project folder "${root}". The user describes what they want; you build it by calling tools. Reply to the user in ${lang === 'ko' ? 'Korean' : 'English'}.
 
 Rules:
 - Work in small, concrete steps. First call list_files to see what exists. Then write files one at a time, then run them.

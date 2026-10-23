@@ -1,4 +1,4 @@
-/** Switch Coder plans. 100% local inference → zero per-user infra cost for us. Priced well below Cursor (Hobby $0 / Pro $20 / Pro+ $60 / Teams $40 per seat, Oct 2026). */
+/** SwitchCoder plans. 100% local inference → zero per-user infra cost for us. Priced well below Cursor (Hobby $0 / Pro $20 / Pro+ $60 / Teams $40 per seat, Oct 2026). */
 export interface Plan { id: 'free' | 'pro' | 'max' | 'team'; name: string; priceMo: number; priceYr?: number; lifetime?: number; perSeat?: boolean; tagline: { ko: string; en: string }; features: { ko: string[]; en: string[] }; cursorEquivalent: string }
 export const plans: Plan[] = [
   { id: 'free', name: 'Free', priceMo: 0, tagline: { ko: '로컬 Flint 무제한', en: 'Unlimited local Flint' }, cursorEquivalent: 'Cursor Hobby ($0, 제한된 요청)',

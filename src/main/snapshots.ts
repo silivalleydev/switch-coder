@@ -6,7 +6,7 @@ import type { Snapshot } from '../shared/types'
 /** Undo for non-developers: a hidden git repo with automatic snapshots. Falls back silently when git is missing. */
 function git(args: string[], cwd: string): Promise<{ code: number | null; out: string }> {
   return new Promise((resolve) => {
-    const p = spawn('git', args, { cwd, env: { ...process.env, GIT_TERMINAL_PROMPT: '0', GIT_AUTHOR_NAME: 'Switch Coder', GIT_AUTHOR_EMAIL: 'bot@switchcoder.app', GIT_COMMITTER_NAME: 'Switch Coder', GIT_COMMITTER_EMAIL: 'bot@switchcoder.app' }, stdio: ['ignore', 'pipe', 'pipe'] })
+    const p = spawn('git', args, { cwd, env: { ...process.env, GIT_TERMINAL_PROMPT: '0', GIT_AUTHOR_NAME: 'SwitchCoder', GIT_AUTHOR_EMAIL: 'bot@switchcoder.app', GIT_COMMITTER_NAME: 'SwitchCoder', GIT_COMMITTER_EMAIL: 'bot@switchcoder.app' }, stdio: ['ignore', 'pipe', 'pipe'] })
     let out = ''; p.stdout.on('data', (d) => (out += d)); p.stderr.on('data', (d) => (out += d))
     p.on('close', (code) => resolve({ code, out })); p.on('error', () => resolve({ code: -1, out: 'git not available' }))
   })

@@ -29,7 +29,7 @@ export function decideRoute(messages: ChatMessage[], mode: RouteMode, threshold:
 export const PLANNER_SYSTEM = `You are a senior engineer. Split the user's task into 3-8 small, concrete, independently verifiable steps that a small local coding model can complete one at a time. Output ONLY a JSON array of objects: [{"title": string, "detail": string, "files": string[]}]. No prose.`
 
 export const CODER_SYSTEM = (lang: 'ko' | 'en', projectRoot: string | null) =>
-  `You are Switch Coder, a precise coding assistant inside a code editor${projectRoot ? ` (project: ${projectRoot})` : ''}.
+  `You are SwitchCoder, a precise coding assistant inside a code editor${projectRoot ? ` (project: ${projectRoot})` : ''}.
 Reply in ${lang === 'ko' ? 'Korean' : 'English'} unless the user writes in another language.
 When you change code, output full replacement blocks as fenced code with the file path on the first line as a comment, e.g. \`\`\`ts // path: src/foo.ts\`\`\`.
 Keep thinking brief. Keep answers short and concrete. Do not restate the question.`

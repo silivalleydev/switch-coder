@@ -3,6 +3,7 @@ import { FolderOpen, Sparkles, Clock, Cpu } from 'lucide-react'
 import { useStore } from '../store'
 import { t } from '../lib/i18n'
 import type { TemplateId } from '../../../shared/types'
+import wordmark from '../assets/wordmark.png'
 
 const TEMPLATES: { id: TemplateId; name: string; desc: { ko: string; en: string } }[] = [
   { id: 'vite-react', name: 'Vite + React', desc: { ko: '웹 앱 기본. 가장 빠르고 Flint가 가장 잘 다룸', en: 'Default for web apps. Fastest; Flint handles it best' } },
@@ -23,7 +24,7 @@ export default function StartScreen() {
   const create = async () => { if (!parent) { await pick(); if (!localStorage.getItem('projectsDir')) return } const par = parent || localStorage.getItem('projectsDir') || ''; if (!par || !name.trim()) return; await createProject(par, name, template, prompt) }
   return (
     <div className="start">
-      <div className="start-hero"><span className="brand big"><span className="dot" />Switch Coder</span><div className="muted">{t(lang, 'startTagline')}</div>
+      <div className="start-hero"><img className="wordmark" src={wordmark} alt="SwitchCoder" /><div className="muted">{t(lang, 'startTagline')}</div>
         <div className="pill local" style={{ marginTop: 6 }}><Cpu size={11} /> {llama.state === 'running' ? t(lang, 'modelRunning') : llama.state === 'starting' ? t(lang, 'modelStarting') : llama.state === 'error' ? t(lang, 'modelError') : t(lang, 'modelStopped')}</div></div>
       <div className="start-cols">
         <div className="start-card">

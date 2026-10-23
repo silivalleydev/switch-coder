@@ -48,7 +48,7 @@ function targets(s: Settings): { local: ModelTarget; cloud: ModelTarget } {
 
 app.whenReady().then(() => {
   Menu.setApplicationMenu(Menu.buildFromTemplate([
-    { label: 'Switch Coder', submenu: [{ role: 'about' }, { type: 'separator' }, { role: 'quit' }] },
+    { label: 'SwitchCoder', submenu: [{ role: 'about' }, { type: 'separator' }, { role: 'quit' }] },
     { label: 'File', submenu: [{ label: 'Open Folder…', accelerator: 'CmdOrCtrl+O', click: () => win?.webContents.send('menu:open-folder') }, { label: 'Save', accelerator: 'CmdOrCtrl+S', click: () => win?.webContents.send('menu:save') }] },
     { role: 'editMenu' }, { role: 'viewMenu' }, { role: 'windowMenu' },
   ]))
